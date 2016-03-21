@@ -1,9 +1,7 @@
 package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
 
-import icy.image.IcyBufferedImage;
 import icy.roi.BooleanMask2D;
 import icy.roi.ROI;
-import icy.roi.ROI2D;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceUtil;
 import icy.type.DataType;
@@ -16,7 +14,6 @@ import java.util.List;
 import plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm;
 import plugins.danyfel80.segmentation.powerwatershed.classes.graphcut.Graph.TerminalType;
 import plugins.kernel.roi.roi2d.ROI2DArea;
-import plugins.kernel.roi.roi3d.ROI3DArea;
 import plugins.ylemontag.histogram.BadHistogramParameters;
 import plugins.ylemontag.histogram.Histogram;
 
