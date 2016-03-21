@@ -1,7 +1,9 @@
 package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
 
 import icy.image.IcyBufferedImage;
+import icy.roi.BooleanMask2D;
 import icy.roi.ROI;
+import icy.roi.ROI2D;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceUtil;
 import icy.type.DataType;
@@ -13,6 +15,10 @@ import java.util.List;
 
 import plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm;
 import plugins.danyfel80.segmentation.powerwatershed.classes.graphcut.Graph.TerminalType;
+import plugins.kernel.roi.roi2d.ROI2DArea;
+import plugins.kernel.roi.roi3d.ROI3DArea;
+import plugins.ylemontag.histogram.BadHistogramParameters;
+import plugins.ylemontag.histogram.Histogram;
 
 /**
  * @author Daniel Felipe Gonzalez Obando
@@ -32,7 +38,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
   private Graph graph;
 
-  private Color[] colors;
+  private List<Color> colors;
   private Sequence segSequence;
 
   /**
@@ -44,21 +50,22 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     this.inSequence = inSequence;
     this.inGraySequence = SequenceUtil.toGray(inSequence);
     this.inGraySequence = SequenceUtil.convertToType(inSequence, DataType.DOUBLE, false);
-    
+
     this.lambda = lambda;
     this.K = 27.0;
-    
+
     this.sizeX = inSequence.getSizeX();
     this.sizeY = inSequence.getSizeY();
     this.sizeZ = inSequence.getSizeZ();
     prepareGraph();
-    
-    segSequence = new Sequence(inSequence.getName() + "_Segmentation");
-    segSequence.beginUpdate();
-    for (int z = 0; z < sizeZ; z++) {
-      segSequence.setImage(0, z, new IcyBufferedImage(sizeX, sizeY, 3, DataType.DOUBLE));
-    }
-    segSequence.endUpdate();
+
+    segSequence = SequenceUtil.getCopy(inSequence);
+//    segSequence = new Sequence(inSequence.getName() + "_Segmentation");
+//    segSequence.beginUpdate();
+//    for (int z = 0; z < sizeZ; z++) {
+//      segSequence.setImage(0, z, new IcyBufferedImage(sizeX, sizeY, 3, DataType.DOUBLE));
+//    }
+//    segSequence.endUpdate();
   }
 
   /* (non-Javadoc)
@@ -141,20 +148,21 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     return z*sizeX*sizeY + y*sizeX + x;
   }
 
+
+
   /* (non-Javadoc)
    * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#executeSegmentation(java.util.List)
    */
   @Override
-  public void executeSegmentation(List<ROI> seeds) {
+  public void executeSegmentation(List<ROI> seeds) throws BadHistogramParameters {
     // calculate terminal edges
-    List<Color> labels = new ArrayList<>();
+    colors = new ArrayList<>();
     for (ROI roi : seeds) {
-      labels.add(roi.getColor());
+      colors.add(roi.getColor());
+      System.out.println(roi.getColor());
     }
-    colors = labels.toArray(new Color[2]);
-    paintSeeds(seeds);
-    double[][] histograms = getClassesHistograms();
-    addTerminalEdges(histograms);
+    //paintSeeds(seeds);
+    addTerminalEdges(seeds);
 
     double maxFlow = graph.computeMaxFlow();
     System.out.println(maxFlow);
@@ -162,28 +170,35 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     paintSegmentation();
   }
 
-  private void paintSeeds(List<ROI> seeds) {
-    segSequence.beginUpdate();
-    double[][][] segData = segSequence.getDataXYCZAsDouble(0);
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0)))
-            segData[z][0][x*sizeY + y] = 1;
-          else if (seeds.get(1).contains(new Point5D.Double(x,y,z,0,0)))
-            segData[z][0][x*sizeY + y] = 2;
-        }
-      }
-    }
-    segSequence.dataChanged();
-    segSequence.endUpdate();
-  }
+  //  private void paintSeeds(List<ROI> seeds) {
+  //    segSequence.beginUpdate();
+  //    double[][][] segData = segSequence.getDataXYCZAsDouble(0);
+  //    for (int z = 0; z < sizeZ; z++) {
+  //      for (int x = 0; x < sizeX; x++) {
+  //        for (int y = 0; y < sizeY; y++) {
+  //          if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0)))
+  //            segData[z][0][x*sizeY + y] = 1;
+  //          else if (seeds.get(1).contains(new Point5D.Double(x,y,z,0,0)))
+  //            segData[z][0][x*sizeY + y] = 2;
+  //        }
+  //      }
+  //    }
+  //    segSequence.dataChanged();
+  //    segSequence.endUpdate();
+  //  }
 
   /**
    * Computes the histogram for each of the seed ROIs.
    * @return Histogram array (one histogram for each ROI).
+   * @throws BadHistogramParameters 
    */
-  private double[][] getClassesHistograms() {
+  private Histogram[] getClassesHistograms(List<ROI> seeds) throws BadHistogramParameters {
+    Histogram[] histograms = new Histogram[seeds.size()];
+    for (int i = 0; i < seeds.size(); i++) {
+      histograms[i] = Histogram.compute(inGraySequence, seeds.get(i), true, 256, 0, 255);
+    }
+    return histograms;
+    /*
     int [] amount = new int[2];
     double[][] histograms = new double[2][256];
 
@@ -196,72 +211,118 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
           double v = segData[z][0][x + y*sizeX];
           if (v > 0) {
             int p = ((int)imageData[z][0][x + y*sizeX]);
-            histograms[(int)v-1][p] += 1;
+            histograms[(int)v-1][p] += 1.0;
             amount[(int)v-1]++;
           }
         }
       }
     }
-    for (int i = 0; i < 256; i++) {
-      histograms[0][i] /= (double)amount[0];
-      histograms[1][i] /= (double)amount[1];
-      //System.out.printf("[%d]=%f\n", i, histograms[0][i]);
-    }
+    double maxVal=0, sum0=0, sum1=0;
 
+    for (int i = 0; i < 256; i++) {
+      //histograms[0][i] /= (double)amount[0];    
+      //histograms[1][i] /= (double)amount[1];
+      sum0 += histograms[0][i];
+      sum1 += histograms[1][i];
+      maxVal = Math.max(histograms[0][i], histograms[1][i]);
+      System.out.printf("[%d]=%f\n", i, histograms[0][i]);
+    }
+    System.out.println("Max histo val = " + maxVal);
+    System.out.println("sum histo 0 = " + sum0);
+    System.out.println("sum histo 1 = " + sum1);
+    System.out.println("quant histo 0 = " + amount[0]);
+    System.out.println("quant histo 1 = " + amount[1]);
     return histograms;
+     */
   }
 
-  private void addTerminalEdges(double[][] histograms) {
+  private void addTerminalEdges(List<ROI> seeds) throws BadHistogramParameters {
     double [][][] grayData = inGraySequence.getDataXYCZAsDouble(0);
-    double [][][] segData = segSequence.getDataXYCZAsDouble(0);
+    Histogram[] histograms = getClassesHistograms(seeds);
+    double [] roiSizes = new double[seeds.size()];
+
+    for (int i = 0; i < seeds.size(); i++) {
+      roiSizes[i] = seeds.get(i).getNumberOfPoints();
+    }
+
+    //    for (int i = 0; i < 256; i++) {
+    //      System.out.println("[" + i + "] = " + (histograms[0].getBin(i).getCount() / roiSizes[0]));
+    //    }
 
     for (int z = 0; z < sizeZ; z++) {
       for (int x = 0; x < sizeX; x++) {
         for (int y = 0; y < sizeY; y++) {
           double capacitySource = 0.0;
           double capacitySink = 0.0;
-
-          if (segData[z][0][x*sizeY + y] > 0.0) { // if seed
-            capacitySource = (segData[z][0][x*sizeY + y] == 2.0)? K: 0.0;
-            capacitySink = (segData[z][0][x*sizeY + y] == 1.0)? K: 0.0;
+          if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0))) { // source seed
+            capacitySource = 0;
+            capacitySink = K;
+          } else if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0))) { // sink seed
+            capacitySource = K;
+            capacitySink = 0;
           } else { // if not seed, then use histograms
             int p = (int)grayData[z][0][x + y*sizeX];
-            double prPSrc = histograms[0][p];
-            double prPSnk = histograms[1][p];
-            capacitySource = lambda * ((histograms[0][p] > 0.000001)? (-Math.log(histograms[0][p])): K);
-            capacitySink = lambda * ((histograms[1][p] > 0.000001)? (-Math.log(histograms[1][p])): K);
+            double prPSrc = histograms[0].getBin(p).getCount() / roiSizes[0];
+            double prPSnk = histograms[1].getBin(p).getCount() / roiSizes[1];
+            capacitySource = lambda * ((prPSrc > 0.000001)? (-Math.log(prPSrc)): K);
+            capacitySink = lambda * ((prPSnk > 0.000001)? (-Math.log(prPSnk)): K);
           }
 
-          graph.addTerminalWeights(getNodeId(x, y, z), capacitySource, capacitySink);
+          graph.addTerminalWeights(getNodeId(x, y, z), capacitySink, capacitySource);
         }
       }
     }
   }
 
   private void paintSegmentation() {
-    segSequence.beginUpdate();
-    double[][][] segData = segSequence.getDataXYCZAsDouble(0);
+    //segSequence.beginUpdate();
+    //double[][][] segData = segSequence.getDataXYCZAsDouble(0);
+    
     
     for (int z = 0; z < sizeZ; z++) {
+      
+      boolean[] maskSource = new boolean[sizeX*sizeY];
+      boolean[] maskSink = new boolean[sizeX*sizeY];
+      
       for (int x = 0; x < sizeX; x++) {
         for (int y = 0; y < sizeY; y++) {
-          int color = 1;
           if (graph.getSegment(getNodeId(x, y, z)) == TerminalType.SOURCE) {
-            color = 0;
+            maskSource[x + y*sizeX] = true;
+            maskSink[x + y*sizeX] = false;
           }
           if (graph.getSegment(getNodeId(x, y, z)) == TerminalType.SINK) {
-            color = 1;
+            maskSource[x + y*sizeX] = false;
+            maskSink[x + y*sizeX] = true;
           }
-          
-          segData[z][0][x + y*sizeX] = colors[color].getRed();
-          segData[z][1][x + y*sizeX] = colors[color].getGreen();
-          segData[z][2][x + y*sizeX] = colors[color].getBlue();
+
+          //          if (color < 2) {
+          //            System.out.println(color);
+          //            segData[z][0][x + y*sizeX] = colors.get(color).getRed();
+          //            segData[z][1][x + y*sizeX] = colors.get(color).getGreen();
+          //            segData[z][2][x + y*sizeX] = colors.get(color).getBlue();
+          //          }
+          //          else {
+//          segData[z][0][x + y*sizeX] = 1;
+//          segData[z][1][x + y*sizeX] = 1;
+//          segData[z][2][x + y*sizeX] = 1;
+          //          }
         }
       }
+      
+      BooleanMask2D mask2Dsource = new BooleanMask2D(segSequence.getBounds2D(), maskSource);
+      ROI2DArea roiSourceZ = new ROI2DArea(mask2Dsource);
+      roiSourceZ.setZ(z);
+      roiSourceZ.setColor(colors.get(0));
+      segSequence.addROI(roiSourceZ);
+      BooleanMask2D mask2Dsink = new BooleanMask2D(segSequence.getBounds2D(), maskSink);
+      ROI2DArea roiSinkZ = new ROI2DArea(mask2Dsink);
+      roiSinkZ.setZ(z);
+      roiSinkZ.setColor(colors.get(1));
+      segSequence.addROI(roiSinkZ);
     }
-    
-    segSequence.dataChanged();
-    segSequence.endUpdate();
+
+    //segSequence.dataChanged();
+    //segSequence.endUpdate();
   }
 
   /* (non-Javadoc)

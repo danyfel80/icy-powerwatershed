@@ -15,6 +15,7 @@ import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
 import plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm;
 import plugins.danyfel80.segmentation.powerwatershed.classes.graphcut.GraphCutSegmentation;
+import plugins.ylemontag.histogram.BadHistogramParameters;
 
 /**
  * @author Daniel Felipe Gonzalez Obando
@@ -130,7 +131,7 @@ public class PowerWatershedPlugin extends EzPlug {
 	
 			break;
 		case GraphCuts:
-			double lambda = 10.0;
+			double lambda = 1;
 			startTime = System.nanoTime();
 			algo = new GraphCutSegmentation(inSequence.getValue(), lambda);
 			endTime = System.nanoTime();
@@ -152,16 +153,22 @@ public class PowerWatershedPlugin extends EzPlug {
 		System.out.println("Time to prepare algorithm: " + (endTime - startTime)/1000000 + "ms");
 		
 		// Execute algorithm
-		startTime = System.nanoTime();
-		algo.executeSegmentation(inSeedsSequence.getValue().getROIs(ROI2D.class));
-		endTime = System.nanoTime();
-		System.out.println("Time to run algorithm: " + (endTime - startTime)/1000000 + "ms");
+		try {
+		  startTime = System.nanoTime();
+          algo.executeSegmentation(inSeedsSequence.getValue().getROIs(ROI2D.class));
+          endTime = System.nanoTime();
+          System.out.println("Time to run algorithm: " + (endTime - startTime)/1000000 + "ms");
+          
+          MessageDialog.showDialog(String.format("Power Watershed Plugin is working fine and using %s!", algo));
+          
+          // Show results
+          Sequence result = algo.getSegmentation();
+          addSequence(result);
+        } catch (BadHistogramParameters e) {
+          MessageDialog.showDialog(String.format("Power Watershed Plugin failed for the algorithm \"%s\"!", algo));
+          e.printStackTrace();
+        }
 		
-		MessageDialog.showDialog(String.format("Power Watershed Plugin is working fine and using %s!", algo));
-		
-		// Show results
-		Sequence result = algo.getSegmentation();
-		addSequence(result);
 		
 		
 		

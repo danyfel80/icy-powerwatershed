@@ -8,11 +8,13 @@ package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
  *
  */
 public class Edge {
+  
   private Node   head;
   private Edge   nextEdge;
   private Edge   reverseEdge;
   private double residualCapacity;
 
+  
   public Node getHead() {
     return head;
   }

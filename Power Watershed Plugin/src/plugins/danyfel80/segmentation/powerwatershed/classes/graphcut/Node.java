@@ -8,6 +8,7 @@ package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
  *
  */
 public class Node {
+  private int    id;
   private Edge firstOutgoingEdge;
   private Edge parentEdge;
   private Node nextActiveNode;
@@ -16,6 +17,14 @@ public class Node {
   private int       distanceToTerminalNode;
   private boolean   inSinkTree;
   private double    terminalResidualCapacity;
+  
+  
+  public int getId() {
+    return id;
+  }
+  public void setId(int id) {
+    this.id = id;
+  }
   
   public Edge getFirstOutgoingEdge() {
     return firstOutgoingEdge;

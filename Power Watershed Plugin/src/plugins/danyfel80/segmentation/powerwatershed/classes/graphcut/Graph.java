@@ -23,7 +23,7 @@ public class Graph {
 
   private double flow = 0;
 
-  private LinkedList<Node>[] activeNodes;
+  private LinkedList<Node> activeNodes;
   private LinkedList<Node> orphanNodes;
   
   private long TIME;
@@ -37,8 +37,12 @@ public class Graph {
 
   public int addNodes(int amount) {
     int nodePos = nodes.size();
-    for (int i = 0; i < amount; i++)
-      nodes.add(new Node());
+    for (int i = 0; i < amount; i++){
+      Node n = new Node();
+      n.setId(nodePos+i);
+      nodes.add(n);
+      
+    }
     return nodePos;
   }
 
@@ -88,79 +92,81 @@ public class Graph {
   public double computeMaxFlow() {
     initMaxFlow();
     
-    System.out.println("initialized");
+    //System.out.println("initialized");
     
-    Node p, q, currentNode;
-    p = q = currentNode = null;
+    Node activeNode, headNode, currentNode;
+    activeNode = headNode = currentNode = null;
     Edge e = null;
 
 
     while (true) {
 
-      // Test consistency
-      p = currentNode;
-      if (p != null) {
-        p.setNextActiveNode(null);
-        if(p.getParentEdge() == null) {
-          p = null;
+      activeNode = currentNode;
+      if (activeNode != null) {
+        activeNode.setNextActiveNode(null);
+        if(activeNode.getParentEdge() == null) {
+          activeNode = null;
         }
       }
 
-      if (p == null) {
-        p = getNextActiveNode();
-        if (p == null) {
+      if (activeNode == null) {
+        activeNode = getNextActiveNode();
+        if (activeNode == null) {
+          //System.out.println("no next active node");
           break;
         }
       }
-
+      
+      //System.out.println("on node " + activeNode.getId());
       // growTrees
-      if(!p.isInSinkTree()) {
-        System.out.println("grow source");
+      if(!activeNode.isInSinkTree()) {
+        //System.out.println("grow source");
         // grow source tree
-        for (e = p.getFirstOutgoingEdge(); e != null; e=e.getNextEdge()) {
+        for (e = activeNode.getFirstOutgoingEdge(); e != null; e=e.getNextEdge()) {
           if (e.getResidualCapacity() != 0.0) {
-            q = e.getHead();
-            if (q.getParentEdge() == null) {
-              q.setInSinkTree(false);
-              q.setParentEdge(e.getReverseEdge());
-              q.setTimeStamp(p.getTimeStamp());
-              q.setDistanceToTerminalNode(q.getDistanceToTerminalNode()+1);
-              setActiveNode(q);
+            headNode = e.getHead();
+            
+            if (headNode.getParentEdge() == null) {
+              headNode.setInSinkTree(false);
+              headNode.setParentEdge(e.getReverseEdge());
+              headNode.setTimeStamp(activeNode.getTimeStamp());
+              headNode.setDistanceToTerminalNode(activeNode.getDistanceToTerminalNode()+1);
+              setActiveNode(headNode);
             }
-            else if (q.isInSinkTree()) {
+            else if (headNode.isInSinkTree()) {
               break;
             }
-            else if (q.getTimeStamp() <= p.getTimeStamp() &&
-                q.getDistanceToTerminalNode() > p.getDistanceToTerminalNode()) {
-              q.setParentEdge(e.getReverseEdge());
-              q.setTimeStamp(p.getTimeStamp());
-              q.setDistanceToTerminalNode(p.getDistanceToTerminalNode()+1);
+            else if (headNode.getTimeStamp() <= activeNode.getTimeStamp() &&
+                headNode.getDistanceToTerminalNode() > activeNode.getDistanceToTerminalNode()) {
+              headNode.setParentEdge(e.getReverseEdge());
+              headNode.setTimeStamp(activeNode.getTimeStamp());
+              headNode.setDistanceToTerminalNode(activeNode.getDistanceToTerminalNode()+1);
             }
           }
         }
       }
       else {
-        System.out.println("grow sink");
+        //System.out.println("grow sink");
         // grow sink tree
-        for (e = p.getFirstOutgoingEdge(); e != null; e=e.getNextEdge()) {
+        for (e = activeNode.getFirstOutgoingEdge(); e != null; e=e.getNextEdge()) {
           if (e.getReverseEdge().getResidualCapacity() != 0.0) {
-            q = e.getHead();
-            if (q.getParentEdge() == null) {
-              q.setInSinkTree(true);
-              q.setParentEdge(e.getReverseEdge());
-              q.setTimeStamp(p.getTimeStamp());
-              q.setDistanceToTerminalNode(q.getDistanceToTerminalNode()+1);
-              setActiveNode(q);
+            headNode = e.getHead();
+            if (headNode.getParentEdge() == null) {
+              headNode.setInSinkTree(true);
+              headNode.setParentEdge(e.getReverseEdge());
+              headNode.setTimeStamp(activeNode.getTimeStamp());
+              headNode.setDistanceToTerminalNode(activeNode.getDistanceToTerminalNode()+1);
+              setActiveNode(headNode);
             }
-            else if (!q.isInSinkTree()) {
+            else if (!headNode.isInSinkTree()) {
               e = e.getReverseEdge();
               break;
             }
-            else if (q.getTimeStamp() <= p.getTimeStamp() && 
-                q.getDistanceToTerminalNode() > p.getDistanceToTerminalNode()) {
-              q.setParentEdge(e.getReverseEdge());
-              q.setTimeStamp(p.getTimeStamp());
-              q.setDistanceToTerminalNode(p.getDistanceToTerminalNode()+1);
+            else if (headNode.getTimeStamp() <= activeNode.getTimeStamp() && 
+                headNode.getDistanceToTerminalNode() > activeNode.getDistanceToTerminalNode()) {
+              headNode.setParentEdge(e.getReverseEdge());
+              headNode.setTimeStamp(activeNode.getTimeStamp());
+              headNode.setDistanceToTerminalNode(activeNode.getDistanceToTerminalNode()+1);
             }
           }
         }
@@ -169,43 +175,37 @@ public class Graph {
     
     TIME++;
     
-    System.out.println("growing phase stopped");
+    //System.out.println("growing phase stopped");
     
     if (e != null) {
-      System.out.println("augmenting path found");
+      //System.out.println("augmenting path found");
       // augmenting path found
-      p.setNextActiveNode(p);
-      currentNode = p;
+      if (activeNode != null)
+        activeNode.setNextActiveNode(activeNode);
+      currentNode = activeNode;
 
       // Augment flow
       augmentFlow(e);
 
-      System.out.println("flow saturated");
+      //System.out.println("flow saturated");
       
       // Adopt orphans
       while (!orphanNodes.isEmpty()) {
-        Node o = orphanNodes.element();
+        Node o = orphanNodes.poll();
         o.setNextActiveNode(null);
-
-        while (!orphanNodes.isEmpty()) {
-          o = orphanNodes.element();
-          orphanNodes.poll();
-          p = o;
-          if (p.isInSinkTree())
-            adoptSinkOrphan(p);
-          else
-            adoptSourceOrphan(p);
-        }
-        orphanNodes.poll();
+        if (o.isInSinkTree())
+          adoptSinkOrphan(o);
+        else
+          adoptSourceOrphan(o);
       }
       
-      System.out.println("orphans adopted");
+      //System.out.println("orphans adopted");
     }
     else {
       currentNode = null;
     }
 
-    return 0;
+    return flow;
   }
 
   public TerminalType getSegment(int nodeId) {
@@ -221,11 +221,16 @@ public class Graph {
 
   private void setActiveNode(Node node) {
     if (!node.isActive()) {
-      if (!activeNodes[1].isEmpty()) {
+      /*if (!activeNodes[1].isEmpty()) {
         activeNodes[1].getLast().setNextActiveNode(node);
       }
       node.setNextActiveNode(node);
-      activeNodes[1].add(node);
+      activeNodes[1].add(node);*/
+      if (!activeNodes.isEmpty()) {
+        activeNodes.getLast().setNextActiveNode(node);
+      }
+      node.setNextActiveNode(node);
+      activeNodes.add(node);
     }
   }
 
@@ -233,24 +238,37 @@ public class Graph {
     Node n;
 
     while (true) {
-      n = activeNodes[0].peek();
+      n = activeNodes.poll();
       if (n == null) {
-        LinkedList<Node> temp = activeNodes[0];
-        activeNodes[0] = activeNodes[1];
-        activeNodes[1] = temp;
-        n = activeNodes[0].peek();
-        if (n == null)
-          return null;
+        return null;
       }
-
-      if (n.getNextActiveNode() == n) {
-        activeNodes[0].remove();
-      }
+  
       n.setNextActiveNode(null);
-
+  
       if (n.getParentEdge() != null) {
         return n;
       }
+//      n = activeNodes[0].peek();
+//      if (n == null) {
+//        LinkedList<Node> temp = activeNodes[0];
+//        activeNodes[0] = activeNodes[1];
+//        activeNodes[1] = temp;
+//        n = activeNodes[0].peek();
+//        if (n == null)
+//          return null;
+//      }
+//
+//      if (n.getNextActiveNode() == n) {
+//        activeNodes[0].clear();
+//      }
+//      else {
+//        activeNodes[0].remove();
+//      }
+//      n.setNextActiveNode(null);
+//
+//      if (n.getParentEdge() != null) {
+//        return n;
+//      }
     }
   }
 
@@ -305,7 +323,7 @@ public class Graph {
       addFrontOrphan(p);
     }
 
-    // 2.a. Source tree
+    // 2.b. Sink tree
     for (p = middleE.getHead(); ; p = e.getHead()) {
       e = p.getParentEdge();
       if (e == TERMINAL) 
@@ -327,13 +345,13 @@ public class Graph {
 
   private void adoptSourceOrphan(Node p) {
     Node q;
-    Edge e0, e0Min = null, e;
+    Edge orphanEdge, orphanEdgeMin = null, e;
     int d, dMin = Integer.MAX_VALUE;
 
     // Try to find a new parent
-    for (e0 = p.getFirstOutgoingEdge(); e0 != null; e0 = e0.getNextEdge()) {
-      if (e0.getReverseEdge().getResidualCapacity() > 0.0) {
-        q = e0.getHead();
+    for (orphanEdge = p.getFirstOutgoingEdge(); orphanEdge != null; orphanEdge = orphanEdge.getNextEdge()) {
+      if (orphanEdge.getReverseEdge().getResidualCapacity() != 0.0) {
+        q = orphanEdge.getHead();
         if (!q.isInSinkTree()) {
           e = q.getParentEdge();
           if(e != null) {
@@ -360,13 +378,14 @@ public class Graph {
             
             if (d < Integer.MAX_VALUE) { // q originates from the source
               if (d < dMin) {
-                e0Min = e0;
+                orphanEdgeMin = orphanEdge;
                 dMin = d;
               }
               // set marks along the path
-              for (q = e0.getHead(); q.getTimeStamp() != TIME; q = q.getParentEdge().getHead()) {
+              for (q = orphanEdge.getHead(); q.getTimeStamp() != TIME; q = q.getParentEdge().getHead()) {
                 q.setTimeStamp(TIME);
-                q.setDistanceToTerminalNode(d--);
+                q.setDistanceToTerminalNode(d);
+                d--;
               }
               
             }
@@ -375,7 +394,7 @@ public class Graph {
       }
     }
     
-    p.setParentEdge(e0Min);
+    p.setParentEdge(orphanEdgeMin);
     if (p.getParentEdge() != null) {
       p.setTimeStamp(TIME);
       p.setDistanceToTerminalNode(dMin + 1);
@@ -383,13 +402,13 @@ public class Graph {
     else {
       // No parent was found
       // Process neighbors
-      for(e0 = p.getFirstOutgoingEdge(); e0 != null; e0 = e0.getNextEdge()) {
-        q = e0.getHead();
+      for(orphanEdge = p.getFirstOutgoingEdge(); orphanEdge != null; orphanEdge = orphanEdge.getNextEdge()) {
+        q = orphanEdge.getHead();
         
         if (!q.isInSinkTree()) {
           e = q.getParentEdge();
           if (e != null) {
-            if (e0.getReverseEdge().getResidualCapacity() != 0.0)
+            if (orphanEdge.getReverseEdge().getResidualCapacity() != 0.0)
               setActiveNode(q);
             if (e != TERMINAL && e != ORPHAN && e.getHead() == p) {
               addBackOrphan(q); // add q to end of orphans list
@@ -402,13 +421,13 @@ public class Graph {
 
   private void adoptSinkOrphan(Node p) {
     Node q;
-    Edge e0, e0Min = null, e;
+    Edge orphanEdge, orphanEdgeMin = null, e;
     int d, dMin = Integer.MAX_VALUE;
 
     // Try to find a new parent
-    for (e0 = p.getFirstOutgoingEdge(); e0 != null; e0 = e0.getNextEdge()) {
-      if (e0.getResidualCapacity() > 0.0) {
-        q = e0.getHead();
+    for (orphanEdge = p.getFirstOutgoingEdge(); orphanEdge != null; orphanEdge = orphanEdge.getNextEdge()) {
+      if (orphanEdge.getResidualCapacity() != 0.0) {
+        q = orphanEdge.getHead();
         
         if (!q.isInSinkTree()) {
           e = q.getParentEdge();
@@ -436,13 +455,14 @@ public class Graph {
             
             if (d < Integer.MAX_VALUE) { // q originates from the source
               if (d < dMin) {
-                e0Min = e0;
+                orphanEdgeMin = orphanEdge;
                 dMin = d;
               }
               // set marks along the path
-              for (q = e0.getHead(); q.getTimeStamp() != TIME; q = q.getParentEdge().getHead()) {
+              for (q = orphanEdge.getHead(); q.getTimeStamp() != TIME; q = q.getParentEdge().getHead()) {
                 q.setTimeStamp(TIME);
-                q.setDistanceToTerminalNode(d--);
+                q.setDistanceToTerminalNode(d);
+                d--;
               }
               
             }
@@ -451,19 +471,19 @@ public class Graph {
       }
     }
     
-    p.setParentEdge(e0Min);
+    p.setParentEdge(orphanEdgeMin);
     if (p.getParentEdge() != null) {
       p.setTimeStamp(TIME);
       p.setDistanceToTerminalNode(dMin + 1);
     }
     else {
-      for(e0 = p.getFirstOutgoingEdge(); e0 != null; e0 = e0.getNextEdge()) {
-        q = e0.getHead();
+      for(orphanEdge = p.getFirstOutgoingEdge(); orphanEdge != null; orphanEdge = orphanEdge.getNextEdge()) {
+        q = orphanEdge.getHead();
         
         if (!q.isInSinkTree()) {
           e = q.getParentEdge();
           if (e != null) {
-            if (e0.getReverseEdge().getResidualCapacity() != 0.0)
+            if (orphanEdge.getReverseEdge().getResidualCapacity() != 0.0)
               setActiveNode(q);
             if (e != TERMINAL && e != ORPHAN && e.getHead() == p) {
               addBackOrphan(q);
@@ -488,11 +508,11 @@ public class Graph {
 
 
 
-  @SuppressWarnings("unchecked")
   private void initMaxFlow() {
-    activeNodes = new LinkedList[2];
-    activeNodes[0] = new LinkedList<Node>();
-    activeNodes[1] = new LinkedList<Node>();
+    activeNodes = new LinkedList<Node>();
+    //activeNodes = new LinkedList[2];
+    //activeNodes[0] = new LinkedList<Node>();
+    //activeNodes[1] = new LinkedList<Node>();
     orphanNodes = new LinkedList<Node>();
 
     TIME = 0;

@@ -8,6 +8,8 @@ import icy.sequence.Sequence;
 
 import java.util.List;
 
+import plugins.ylemontag.histogram.BadHistogramParameters;
+
 /**
  * @author Daniel Felipe Gonzalez Obando
  * This abstract class represent the generalization of a segmentation algorithm.
@@ -27,8 +29,9 @@ public abstract class SegmentationAlgorithm {
 	 * Executes the segmentation algorithm.
 	 * @param list The seeds for the segmentation. At least two classes must be
 	 * given.
+	 * @throws BadHistogramParameters 
 	 */
-	public abstract void executeSegmentation(List<ROI> seeds);
+	public abstract void executeSegmentation(List<ROI> seeds) throws BadHistogramParameters;
 
 	public abstract Sequence getSegmentation();
 	
