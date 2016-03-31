@@ -1,7 +1,7 @@
 /**
  * 
  */
-package plugins.danyfel80.segmentation.powerwatershed.classes;
+package algorithms.danyfel80.segmentation.graphcut.old;
 
 import icy.image.IcyBufferedImage;
 import icy.roi.ROI;
@@ -19,6 +19,8 @@ import java.util.Queue;
 import javax.vecmath.Point3i;
 
 import com.google.common.collect.Lists;
+
+import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
 
 
 /**

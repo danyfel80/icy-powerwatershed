@@ -1,7 +1,7 @@
 /**
  * 
  */
-package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
+package algorithms.danyfel80.segmentation.graphcut;
 
 /**
  * @author Daniel Felipe Gonzalez Obando

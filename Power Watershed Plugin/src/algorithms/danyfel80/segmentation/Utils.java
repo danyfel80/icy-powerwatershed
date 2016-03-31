@@ -1,7 +1,7 @@
 /**
  * 
  */
-package plugins.danyfel80.segmentation.powerwatershed.classes;
+package algorithms.danyfel80.segmentation;
 
 /**
  * @author Daniel Felipe Gonzalez Obando

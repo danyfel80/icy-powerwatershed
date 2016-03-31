@@ -1,4 +1,4 @@
-package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
+package algorithms.danyfel80.segmentation.graphcut;
 
 import icy.roi.BooleanMask2D;
 import icy.roi.ROI;
@@ -11,8 +11,8 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
-import plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm;
-import plugins.danyfel80.segmentation.powerwatershed.classes.graphcut.Graph.TerminalType;
+import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
+import algorithms.danyfel80.segmentation.graphcut.Graph.TerminalType;
 import plugins.kernel.roi.roi2d.ROI2DArea;
 import plugins.ylemontag.histogram.BadHistogramParameters;
 import plugins.ylemontag.histogram.Histogram;
@@ -25,6 +25,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
   private final double lambda;
   private final double K;
+  private final boolean use8Connected;
 
   @SuppressWarnings("unused")
   private Sequence inSequence;
@@ -43,13 +44,15 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
    * @param inSequence 
    * 
    */
-  public GraphCutSegmentation(Sequence inSequence, double lambda) {
+  public GraphCutSegmentation(Sequence inSequence, double lambda, boolean use8Connected) {
     this.inSequence = inSequence;
     this.inGraySequence = SequenceUtil.toGray(inSequence);
     this.inGraySequence = SequenceUtil.convertToType(inSequence, DataType.DOUBLE, false);
 
     this.lambda = lambda;
     this.K = 27.0;
+    
+    this.use8Connected = use8Connected;
 
     this.sizeX = inSequence.getSizeX();
     this.sizeY = inSequence.getSizeY();
@@ -70,11 +73,14 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
    */
   @Override
   protected void prepareGraph() {
-    if (sizeZ == 1)
-      graph = new Graph(sizeX*sizeY, sizeX*sizeY*8);
-    else
-      graph = new Graph(sizeX*sizeY*sizeZ, sizeX*sizeY*sizeZ*26);
-
+    int numEdges = 0;
+    if (use8Connected) {
+      numEdges = sizeZ*(4*sizeY*sizeX - 3*sizeY - 3*sizeX + 2) + (sizeZ-1)*(8*sizeY*sizeX - 6*sizeY - 6*sizeX + 4);
+    } else {
+      numEdges = sizeZ*(2*sizeY*sizeX - sizeY - sizeX + 2) + (sizeZ-1)*(sizeY*sizeX);
+    }
+    graph = new Graph(sizeX*sizeY*sizeZ, numEdges);
+    System.out.println("Nodes=" + (sizeX*sizeY*sizeZ) + ", Edges=" + numEdges);
     graph.addNodes(sizeX*sizeY*sizeZ);
 
     double variance = calculateVariance();
@@ -86,25 +92,54 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
         for (int y = 0; y < sizeY; y++) {
 
           int idP = getNodeId(x, y, z);
-          for (int dz = -1; dz <= 1; dz++) {
-            for (int dx = -1; dx <= 1; dx++) {
-              for (int dy = -1; dy <= 1; dy++) {
-
-                if (dz != 0 || dx!= 0 || dy != 0) {
-                  if (z+dz >= 0 && z+dz < sizeZ &&
-                      x+dx >= 0 && x+dx < sizeX &&
-                      y+dy >= 0 && y+dy < sizeY) {
-                    int idQ = getNodeId(x+dx, y+dy, z+dz);
-                    if (idQ > idP) {
-                      double diff = inGrayData[z][0][x + y*sizeX];
-                      diff -= inGrayData[(z+dz)][0][(x+dx) + (y+dy)*sizeX]; 
-                      double weight = Math.exp(-(diff*diff)/(2.0 * variance)) * (1.0 / Math.sqrt((double)(dx*dx + dy*dy + dz*dz)));
-                      graph.addEdge(idP, idQ, weight, weight);
+          if (use8Connected) {
+            // 8 connected graph
+            for (int dz = -1; dz <= 1; dz++) {
+              for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+  
+                  if (dz != 0 || dx!= 0 || dy != 0) {
+                    if (z+dz >= 0 && z+dz < sizeZ &&
+                        x+dx >= 0 && x+dx < sizeX &&
+                        y+dy >= 0 && y+dy < sizeY) {
+                      int idQ = getNodeId(x+dx, y+dy, z+dz);
+                      if (idQ > idP) {
+                        double diff = inGrayData[z][0][x + y*sizeX];
+                        diff -= inGrayData[(z+dz)][0][(x+dx) + (y+dy)*sizeX]; 
+                        double weight = Math.exp(-(diff*diff)/(2.0 * variance)) * (1.0 / Math.sqrt((double)(dx*dx + dy*dy + dz*dz)));
+                        graph.addEdge(idP, idQ, weight, weight);
+                      }
                     }
                   }
+  
                 }
-
               }
+            }
+          }
+          else {
+            // 4 connected graph
+            if (z+1 < sizeZ){
+              int idQ = getNodeId(x, y, z+1);
+              double diff = inGrayData[z][0][x + y*sizeX];
+              diff -= inGrayData[(z+1)][0][(x) + (y)*sizeX]; 
+              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
+              graph.addEdge(idP, idQ, weight, weight);
+            }
+            
+            if (x+1 < sizeX){
+              int idQ = getNodeId(x+1, y, z);
+              double diff = inGrayData[z][0][x + y*sizeX];
+              diff -= inGrayData[(z)][0][(x+1) + (y)*sizeX]; 
+              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
+              graph.addEdge(idP, idQ, weight, weight);
+            }
+            
+            if (y+1 < sizeY){
+              int idQ = getNodeId(x, y+1, z);
+              double diff = inGrayData[z][0][x + y*sizeX];
+              diff -= inGrayData[(z)][0][(x) + (y+1)*sizeX]; 
+              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
+              graph.addEdge(idP, idQ, weight, weight);
             }
           }
 
@@ -156,13 +191,12 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     colors = new ArrayList<>();
     for (ROI roi : seeds) {
       colors.add(roi.getColor());
-      System.out.println(roi.getColor());
     }
     //paintSeeds(seeds);
     addTerminalEdges(seeds);
 
     double maxFlow = graph.computeMaxFlow();
-    System.out.println(maxFlow);
+    System.out.println("Max flow = " + maxFlow);
 
     paintSegmentation();
   }

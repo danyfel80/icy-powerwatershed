@@ -7,14 +7,14 @@ import icy.sequence.Sequence;
 
 import java.util.List;
 
+import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
+import algorithms.danyfel80.segmentation.graphcut.GraphCutSegmentation;
 import plugins.adufour.ezplug.EzPlug;
 import plugins.adufour.ezplug.EzVar;
 import plugins.adufour.ezplug.EzVarBoolean;
 import plugins.adufour.ezplug.EzVarInteger;
 import plugins.adufour.ezplug.EzVarListener;
 import plugins.adufour.ezplug.EzVarSequence;
-import plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm;
-import plugins.danyfel80.segmentation.powerwatershed.classes.graphcut.GraphCutSegmentation;
 import plugins.ylemontag.histogram.BadHistogramParameters;
 
 /**
@@ -35,6 +35,7 @@ public class PowerWatershedPlugin extends EzPlug {
 	private EzVarBoolean inIsPInfinite;
 	private EzVarInteger inQ;
 	private EzVarBoolean inIsQInfinite;
+	private EzVarBoolean inUse8Connected;
 
 	/* (non-Javadoc)
 	 * @see plugins.adufour.ezplug.EzPlug#initialize()
@@ -93,6 +94,8 @@ public class PowerWatershedPlugin extends EzPlug {
 				}
 			}
 		});
+		
+		inUse8Connected = new EzVarBoolean("Use 8 connected image", false);
 
 		// Input components addition to UI
 		addEzComponent(inSequence);
@@ -101,6 +104,7 @@ public class PowerWatershedPlugin extends EzPlug {
 		addEzComponent(inIsPInfinite);
 		addEzComponent(inQ);
 		addEzComponent(inIsQInfinite);
+		addEzComponent(inUse8Connected);
 	}
 
 	/* (non-Javadoc)
@@ -133,7 +137,7 @@ public class PowerWatershedPlugin extends EzPlug {
 		case GraphCuts:
 			double lambda = 1;
 			startTime = System.nanoTime();
-			algo = new GraphCutSegmentation(inSequence.getValue(), lambda);
+			algo = new GraphCutSegmentation(inSequence.getValue(), lambda, inUse8Connected.getValue());
 			endTime = System.nanoTime();
 			break;
 		case RandomWalker:

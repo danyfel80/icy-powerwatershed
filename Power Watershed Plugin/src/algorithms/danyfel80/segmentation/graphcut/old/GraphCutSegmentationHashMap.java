@@ -1,7 +1,7 @@
 /**
  * 
  */
-package plugins.danyfel80.segmentation.powerwatershed.classes;
+package algorithms.danyfel80.segmentation.graphcut.old;
 
 import icy.image.IcyBufferedImage;
 import icy.roi.ROI;
@@ -26,6 +26,8 @@ import org.jgrapht.graph.DefaultDirectedWeightedGraph;
 import org.jgrapht.graph.DefaultWeightedEdge;
 
 import com.google.common.collect.Lists;
+
+import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
 
 
 /**

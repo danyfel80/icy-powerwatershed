@@ -1,4 +1,4 @@
-package plugins.danyfel80.segmentation.powerwatershed.classes.graphcut;
+package algorithms.danyfel80.segmentation.graphcut;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -19,7 +19,7 @@ public class Graph {
   private static Edge ORPHAN = new Edge();
 
   private List<Node> nodes;
-  private List<Edge> edges;
+  public List<Edge> edges;
 
   private double flow = 0;
 
