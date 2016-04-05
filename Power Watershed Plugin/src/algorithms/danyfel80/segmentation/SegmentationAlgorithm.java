@@ -20,18 +20,17 @@ public abstract class SegmentationAlgorithm {
 	
 	
 	/**
-	 * Prepares the graph for the algorithm
-	 * @param image The image to segment.
+	 * Prepares the graph for the algorithm.
+	 * @param list The seeds for the segmentation. At least two classes must be
+     * given.
+     * @throws BadHistogramParameters 
 	 */
-	protected abstract void prepareGraph();
+	protected abstract void prepareGraph(List<ROI> seeds) throws BadHistogramParameters;
 
 	/**
 	 * Executes the segmentation algorithm.
-	 * @param list The seeds for the segmentation. At least two classes must be
-	 * given.
-	 * @throws BadHistogramParameters 
 	 */
-	public abstract void executeSegmentation(List<ROI> seeds) throws BadHistogramParameters;
+	public abstract void executeSegmentation();
 
 	public abstract Sequence getSegmentation();
 	

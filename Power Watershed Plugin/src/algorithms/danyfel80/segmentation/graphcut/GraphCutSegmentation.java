@@ -42,9 +42,10 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
   /**
    * @param lambda 
    * @param inSequence 
+   * @throws BadHistogramParameters 
    * 
    */
-  public GraphCutSegmentation(Sequence inSequence, double lambda, boolean use8Connected) {
+  public GraphCutSegmentation(Sequence inSequence, double lambda, boolean use8Connected, List<ROI> seeds) throws BadHistogramParameters {
     this.inSequence = inSequence;
     this.inGraySequence = SequenceUtil.toGray(inSequence);
     this.inGraySequence = SequenceUtil.convertToType(inSequence, DataType.DOUBLE, false);
@@ -57,7 +58,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     this.sizeX = inSequence.getSizeX();
     this.sizeY = inSequence.getSizeY();
     this.sizeZ = inSequence.getSizeZ();
-    prepareGraph();
+    prepareGraph(seeds);
 
     segSequence = SequenceUtil.getCopy(inSequence);
 //    segSequence = new Sequence(inSequence.getName() + "_Segmentation");
@@ -72,7 +73,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
    * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#prepareGraph()
    */
   @Override
-  protected void prepareGraph() {
+  protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters{
     int numEdges = 0;
     if (use8Connected) {
       numEdges = sizeZ*(4*sizeY*sizeX - 3*sizeY - 3*sizeX + 2) + (sizeZ-1)*(8*sizeY*sizeX - 6*sizeY - 6*sizeX + 4);
@@ -146,6 +147,14 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
         }
       }
     }
+    
+    // calculate terminal edges
+    colors = new ArrayList<>();
+    for (ROI roi : seeds) {
+      colors.add(roi.getColor());
+    }
+    //paintSeeds(seeds);
+    addTerminalEdges(seeds);
   }
 
   private double calculateVariance() {
@@ -186,14 +195,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
    * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#executeSegmentation(java.util.List)
    */
   @Override
-  public void executeSegmentation(List<ROI> seeds) throws BadHistogramParameters {
-    // calculate terminal edges
-    colors = new ArrayList<>();
-    for (ROI roi : seeds) {
-      colors.add(roi.getColor());
-    }
-    //paintSeeds(seeds);
-    addTerminalEdges(seeds);
+  public void executeSegmentation() {
+    
 
     double maxFlow = graph.computeMaxFlow();
     System.out.println("Max flow = " + maxFlow);

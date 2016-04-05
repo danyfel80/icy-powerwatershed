@@ -39,6 +39,7 @@ public class GraphCutSegmentationHashMap extends SegmentationAlgorithm {
 	private Sequence inSequence;
 	private Sequence grayInSequence;
 	private Sequence segmentation;
+	private List<ROI> seeds;
 
 	private int sizeX;
 	private int sizeY;
@@ -57,18 +58,19 @@ public class GraphCutSegmentationHashMap extends SegmentationAlgorithm {
 	private Queue<Point3i> activeNodes;
 	private Queue<Point3i> orphanNodes;
 
-	public GraphCutSegmentationHashMap(Sequence inSequence, double lambda) {
+	public GraphCutSegmentationHashMap(Sequence inSequence, double lambda, List<ROI> seeds) {
 		this.K = 27.0;
 		this.lambda = lambda;
 		this.inSequence = inSequence;
-		prepareGraph();
+		this.seeds = seeds;
+		prepareGraph(seeds);
 	}
 
 	/* (non-Javadoc)
 	 * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#prepareGraph()
 	 */
 	@Override
-	protected void prepareGraph() {
+	protected void prepareGraph(List<ROI> seeds) {
 		grayInSequence = SequenceUtil.toGray(inSequence);
 		grayInSequence = SequenceUtil.convertToType(grayInSequence, DataType.DOUBLE, false);
 		double[][][] grayData = grayInSequence.getDataXYCZAsDouble(0);
@@ -151,7 +153,7 @@ public class GraphCutSegmentationHashMap extends SegmentationAlgorithm {
 	 * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#executeSegmentation(java.util.List)
 	 */
 	@Override
-	public void executeSegmentation(List<ROI> seeds) {
+	public void executeSegmentation() {
 		// compute t-links
 		List<Color> labels = new ArrayList<>();
 		for (ROI roi : seeds) {

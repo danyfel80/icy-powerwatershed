@@ -36,6 +36,7 @@ public class GraphCutSegmentationOld extends SegmentationAlgorithm {
 	
 	private Sequence inSequence; // Input sequence
 	private Sequence grayInSequence; // Gray-scale input sequence
+	private List<ROI> seeds;
 	private int sizeX; // Size of sequence in X dimension
 	private int sizeY; // Size of sequence in Y dimension
 	private int sizeZ; // Size of sequence in Z dimension
@@ -57,25 +58,27 @@ public class GraphCutSegmentationOld extends SegmentationAlgorithm {
 	 * Graph cut constructor. Uses inSequence to execute the segmentation.
 	 * @param inSequence Input sequence for the segmentation.
 	 */
-	public GraphCutSegmentationOld(Sequence inSequence, double lambda) {
+	public GraphCutSegmentationOld(Sequence inSequence, double lambda, List<ROI> seeds) {
 		this.lambda = lambda;
 		this.inSequence = SequenceUtil.convertToType(inSequence, DataType.DOUBLE, true);
 		this.grayInSequence = SequenceUtil.toGray(inSequence);
 		this.grayInSequence = SequenceUtil.convertToType(grayInSequence, DataType.DOUBLE, false);
+		
+		this.seeds = seeds;
 
 		sizeZ = this.inSequence.getSizeZ();
 		sizeX = this.inSequence.getSizeX();
 		sizeY = this.inSequence.getSizeY();
 		//sizeC = this.inSequence.getSizeC();
 
-		prepareGraph();
+		prepareGraph(seeds);
 	}
 
 	/* (non-Javadoc)
 	 * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#prepareGraph()
 	 */
 	@Override
-	public void prepareGraph() {
+	public void prepareGraph(List<ROI> seeds) {
 		vertices = new Sequence(inSequence.getName() + "_segmentation");
 		parent = new ArrayList<Integer>((sizeZ*sizeX*sizeY)+2);
 		tree = new ArrayList<Integer>((sizeZ*sizeX*sizeY)+2);
@@ -180,7 +183,7 @@ public class GraphCutSegmentationOld extends SegmentationAlgorithm {
 	 * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#executeSegmentation(java.util.List)
 	 */
 	@Override
-	public void executeSegmentation(List<ROI> seeds) {
+	public void executeSegmentation() {
 		// Calculate initial segmentation values and capacities.
 		List<Color> labels = new ArrayList<>();
 		for (ROI roi : seeds) {
