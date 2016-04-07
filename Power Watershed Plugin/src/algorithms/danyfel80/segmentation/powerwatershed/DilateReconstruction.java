@@ -5,68 +5,78 @@ package algorithms.danyfel80.segmentation.powerwatershed;
  */
 public class DilateReconstruction {
 
-  private static int MAX_W;
+  private static int MAX_W = 255;
   /**
    * Reconstruction by dilation of normalWeights under seedsFunction.  Union-find method described by Luc Vicent.
+   * @param seedsFunction Image seeds
+   * @param originalWeights Image weights
+   * @param resultWeights Result of the reconstruction by dilation of normalWeights under seedsFunction.
+   * @param edges List of couples of vertices forming edges
+   * @param sx Size in X of sequence
+   * @param sy Size in Y of sequence
+   * @param sz Size in Z of sequence
+   * @param M Amount of edges
    */
-  public static int[] reconstruct(int[] seedsFunction, int[] normalWeights, 
-      int[] weights, int[][] edges, int sx, int sy,int sz, int M) {
+  public static void reconstruct(int[] seedsFunction, int[] originalWeights, 
+      int[] resultWeights, int[][] edges, int sx, int sy,int sz, int M, boolean useQuickSort) {
 
     int k, p, i, n;
-    boolean[] marked = new boolean[M];
-    int[] fathers = new int[M];
-    int[] edgesSorted = new int[M];
+    boolean[] markedEdges = new boolean[M];
+    int[] parentEdges = new int[M];
+    int[] sortedEdges = new int[M];
 
     for (k = 0; k < M; k++) {
-      fathers[k] = k;
-      weights[k] = seedsFunction[k];
-      seedsFunction[k] = normalWeights[k];
-      edgesSorted[k] = k;
+      parentEdges[k] = k;
+      resultWeights[k] = seedsFunction[k];
+      seedsFunction[k] = originalWeights[k];
+      sortedEdges[k] = k;
     }
 
-    MAX_W = 255;
-    GraphUtils.sort(seedsFunction, edgesSorted, M, MAX_W+1);
+    if (useQuickSort) {
+      GraphUtils.BinSort(seedsFunction, sortedEdges, M, MAX_W+1);
+    } else {
+      GraphUtils.quickStochasticSort(seedsFunction, sortedEdges, 0, M-1);
+    }
 
     // First pass
     if (sz == 1) { // 2D image
       for (k = M - 1; k >= 0; k--) {
-        p = edgesSorted[k];
+        p = sortedEdges[k];
         for (i = 1; i <= 6; i += 1) { // parcourt les 6 voisins  
           n = GraphUtils.getNeighborEdge(p, i, sx, sy, sz);
           if (n != -1) {
-            if (marked[n]) { 
-              elementLinkGeodesicDilate(n,p, fathers, normalWeights, weights);
+            if (markedEdges[n]) { 
+              elementLinkGeodesicDilate(n, p, parentEdges, originalWeights, resultWeights);
             }
           }
-          marked[p]=true;
+          markedEdges[p]=true;
         }
       }
     } else { // 3D image
       for (k = M - 1; k >= 0; k--) {
-        p = edgesSorted[k];
+        p = sortedEdges[k];
         for (i = 1; i <= 12; i += 1) { // parcourt les 12 voisins  
           n = GraphUtils.getNeighborEdge3D(edges[0][p], edges[1][p], p, i, sx, sy, sz);
           if (n != -1)
-            if(marked[n])
-              elementLinkGeodesicDilate(n,p, fathers, normalWeights, weights);
-          marked[p]=true;
+            if(markedEdges[n])
+              elementLinkGeodesicDilate(n,p, parentEdges, originalWeights, resultWeights);
+          markedEdges[p]=true;
         }
       }
     }
 
     // Second pass
     for(k = 0; k < M; k++) {
-      p = edgesSorted[k];
-      if (fathers[p] == p) { // p is root
-        if (weights[p] == MAX_W) {
-          weights[p] = normalWeights[p];
+      p = sortedEdges[k];
+      if (parentEdges[p] == p) { // p is root
+        if (resultWeights[p] == MAX_W) {
+          resultWeights[p] = originalWeights[p];
         }
       }
       else {
-        normalWeights[p] = normalWeights[fathers[p]];
+        resultWeights[p] = resultWeights[parentEdges[p]];
       }
     }
-    return weights;
   }
 
   /**

@@ -8,14 +8,14 @@ package plugins.danyfel80.segmentation.powerwatershed;
  * Specifies the different algorithms used to make the segmentations.
  */
 public enum SegmentationType {
-  CollapseToSeeds ("Collapse to seeds"),
-  l2NormVoronoi ("l2 Norm Voronoi"),
-  l1NormVoronoi ("l1 Norm Voronoi"),
-  GraphCuts ("Graph cuts"),
-  RandomWalker ("Random walker"),
-  PowerWatershedQ1 ("Power watershed q = 1"),
-  PowerWatershedQ2 ("Power watershed q = 2"),
-  ShortestPathForest ("Shortest path forest");
+  CollapseToSeeds ("Collapse to seeds (p = q = 1)"),
+  l2NormVoronoi ("l2 Norm Voronoi (p = 0, q = 2)"),
+  l1NormVoronoi ("l1 Norm Voronoi (p = [0, 1], q = inf)"),
+  GraphCuts ("Graph cuts (p = 1, q = 1)"),
+  RandomWalker ("Random walker (p = 1, q = 2)"),
+  PowerWatershedQ1 ("Power watershed (p = inf, q = 1)"),
+  PowerWatershedQ2 ("Power watershed (p = inf, q = 2)"),
+  ShortestPathForest ("Shortest path forest (p = inf, q = inf)");
 
   private final String name;
 

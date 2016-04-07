@@ -349,7 +349,7 @@ public class GraphUtils {
    * @param seedsFnSize Number of elements to sort
    * @param numBins Number of buckets
    */
-  public static void sort(int[] seedsFunction, int[] sortedEdges, int seedsFnSize, int numBins) {
+  public static void BinSort(int[] seedsFunction, int[] sortedEdges, int seedsFnSize, int numBins) {
     int i, j;
     int[] H = new int[numBins];
     for(i = 0; i < seedsFnSize; i++) {
@@ -403,15 +403,15 @@ public class GraphUtils {
    * @return
    */
   private static int stochasticPartition(int[] A, int[] I, int p, int r) {
-    int t, t1, q;
+    int t, q;
     q = p + (Random.nextInt(r - p + 1));
     t = A[p];
     A[p] = A[q];
     A[q] = t;
     
-    t1 = I[p];
+    t = I[p];
     I[p] = I[q];
-    I[q] = t1;
+    I[q] = t;
     
     return findPartition(A, I, p, r);
   }
@@ -429,7 +429,7 @@ public class GraphUtils {
    */
   private static int findPartition(int[] A, int[] I, int p, int r) {
     
-    int  t, t1;
+    int  t;
     int x = A[p];
     int i = p - 1;
     int j = r + 1;
@@ -446,10 +446,11 @@ public class GraphUtils {
       if (i < j) { 
         t = A[i];
         A[i] = A[j];
-        A[j] = t; 
-        t1 = I[i];
+        A[j] = t;
+        
+        t = I[i];
         I[i] = I[j];
-        I[j] = t1; 
+        I[j] = t; 
       }
       else {
         return j;

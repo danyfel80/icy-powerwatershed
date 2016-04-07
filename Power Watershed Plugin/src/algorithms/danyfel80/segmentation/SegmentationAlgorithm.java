@@ -6,6 +6,7 @@ package algorithms.danyfel80.segmentation;
 import icy.roi.ROI;
 import icy.sequence.Sequence;
 
+import java.util.Collection;
 import java.util.List;
 
 import plugins.ylemontag.histogram.BadHistogramParameters;
@@ -32,6 +33,19 @@ public abstract class SegmentationAlgorithm {
 	 */
 	public abstract void executeSegmentation();
 
-	public abstract Sequence getSegmentation();
+	/**
+	 * @return Sequence with segments in colors. 
+	 */
+	public abstract Sequence getSegmentationSequence();
+	
+	/**
+	 * @return collection of ROIs with the found segments. 
+	 */
+	public abstract Collection<? extends ROI> getSegmentationROIs();
+	
+	/**
+	 * @return Sequence with segments as ROIs.
+	 */
+    public abstract Sequence getSegmentationSequenceWithROIs();
 	
 }

@@ -1,18 +1,18 @@
 package algorithms.danyfel80.segmentation.graphcut;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
+import algorithms.danyfel80.segmentation.graphcut.Graph.TerminalType;
 import icy.roi.BooleanMask2D;
 import icy.roi.ROI;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceUtil;
 import icy.type.DataType;
 import icy.type.point.Point5D;
-
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.List;
-
-import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
-import algorithms.danyfel80.segmentation.graphcut.Graph.TerminalType;
 import plugins.kernel.roi.roi2d.ROI2DArea;
 import plugins.ylemontag.histogram.BadHistogramParameters;
 import plugins.ylemontag.histogram.Histogram;
@@ -359,11 +359,22 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     //segSequence.endUpdate();
   }
 
-  /* (non-Javadoc)
-   * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#getSegmentation()
-   */
   @Override
-  public Sequence getSegmentation() {
+  public Sequence getSegmentationSequence() {
+    // TODO Auto-generated method stub
+    System.err.println("Method not yet implemented.");
+    return null;
+  }
+
+  @Override
+  public Collection<? extends ROI> getSegmentationROIs() {
+    // TODO Auto-generated method stub
+    System.err.println("Method not yet implemented.");
+    return null;
+  }
+
+  @Override
+  public Sequence getSegmentationSequenceWithROIs() {
     return segSequence;
   }
 
