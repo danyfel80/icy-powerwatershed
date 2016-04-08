@@ -27,6 +27,7 @@ public class GraphPW {
 
   private boolean useGeo;
   private boolean useQuickSort;
+  private boolean useGrayLevels;
   private int[][] edges; // edges source-target
   int numSeeds; // #seeds
   private int[] indexSeeds; // seed to node index
@@ -50,11 +51,12 @@ public class GraphPW {
    * @param seq Sequence where the segmentation is performed
    * @param seeds Seed ROIS. One ROI per label.
    */
-  public GraphPW(Sequence seq, List<ROI> seeds, boolean useGeo, boolean useQuickSort) { 
+  public GraphPW(Sequence seq, List<ROI> seeds, boolean useGeo, boolean useGrayLevels, boolean useQuickSort) { 
 
     this.seq = seq;
     this.seeds = seeds;
     this.useGeo = useGeo;
+    this.useGrayLevels = useGrayLevels;
 
     sx = seq.getSizeX(); // Size of sequence in x
     sy = seq.getSizeY(); // Size of sequence in y
@@ -148,21 +150,24 @@ public class GraphPW {
     byte[][][] seqData = seq.getDataXYCZAsByte(0);
     int i, j, xy1, z1, xy2, z2, sxy = sx*sy;
     
-    int[] vals = new int[seq.getSizeC()];
+    int channels = (useGrayLevels)? 1: seq.getSizeC();
+    int val;
+    weights = new int[M];
     normalWeights = new int[M];
     for (i = 0; i < M; i++) {
       z1 = edges[0][i]/sxy;
       xy1 = edges[0][i]%sxy;
       z2 = edges[1][i]/sxy;
       xy2 = edges[1][i]%sxy;
-      for (j = 0; j < seq.getSizeC(); j++) {
-        vals[j] = Math.abs(TypeUtil.unsign(seqData[z1][j][xy1]) - TypeUtil.unsign(seqData[z2][j][xy2]));
+      for (j = 0; j < channels; j++) {
+        val = 255 - Math.abs(TypeUtil.unsign(seqData[z1][j][xy1]) - TypeUtil.unsign(seqData[z2][j][xy2]));
         if (j == 0) {
-          normalWeights[i] = 255 - vals[j];
+          weights[i] = val;
         } else {
-          normalWeights[i] = Math.min(normalWeights[i], 255 - vals[j]);
+          weights[i] = Math.min(weights[i], val);
         }
       }
+      normalWeights[i] = weights[i];
     }
 
     
@@ -179,7 +184,7 @@ public class GraphPW {
       }
     }
     
-    weights = new int[M];
+    
     // if not dilated the result of segmentation is voronoi because weights are all 0.
     DilateReconstruction.reconstruct(seedsFunction, normalWeights, weights, edges, sx, sy, sz, M, useQuickSort);
   }

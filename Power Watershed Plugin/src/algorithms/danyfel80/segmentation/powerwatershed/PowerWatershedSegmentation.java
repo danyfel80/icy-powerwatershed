@@ -48,7 +48,7 @@ public class PowerWatershedSegmentation extends SegmentationAlgorithm {
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters {
     long startTime = System.nanoTime();
-    graph = new GraphPW(treatedSequence, seeds, useGeo, false);
+    graph = new GraphPW(treatedSequence, seeds, useGeo, isGraySequence, false);
     long endTime = System.nanoTime();
     System.out.println("graph object created: " + ((endTime-startTime)/1000000) + " msec...");
     startTime = System.nanoTime();
