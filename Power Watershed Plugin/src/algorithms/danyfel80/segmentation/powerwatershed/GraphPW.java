@@ -27,7 +27,6 @@ public class GraphPW {
 
   private boolean useGeo;
   private boolean useQuickSort;
-  private boolean isGraySequence;
   private int[][] edges; // edges source-target
   int numSeeds; // #seeds
   private int[] indexSeeds; // seed to node index
@@ -51,12 +50,11 @@ public class GraphPW {
    * @param seq Sequence where the segmentation is performed
    * @param seeds Seed ROIS. One ROI per label.
    */
-  public GraphPW(Sequence seq, List<ROI> seeds, boolean useGeo, boolean isGraySequence, boolean useQuickSort) { 
+  public GraphPW(Sequence seq, List<ROI> seeds, boolean useGeo, boolean useQuickSort) { 
 
     this.seq = seq;
     this.seeds = seeds;
     this.useGeo = useGeo;
-    this.isGraySequence = isGraySequence;
 
     sx = seq.getSizeX(); // Size of sequence in x
     sy = seq.getSizeY(); // Size of sequence in y
@@ -147,87 +145,31 @@ public class GraphPW {
    * Adds the weights of each edge and performs geodesic reconstruction.
    */
   public void calculateWeights() {
-    if (isGraySequence) {
-      calculateGrayWeights();
-    } else {
-      calculateColorWeights();
-    }
-  }
-
-  /**
-   * Adds the weights of each edge considering gray-levels and performs geodesic reconstruction.
-   */
-  private void calculateGrayWeights() {
-    weights = new int[M];
-    normalWeights = new int[M];
-
-    byte[][] seqData = seq.getDataXYZAsByte(0, 0);
-
-    int i, xy1, z1, xy2, z2, sxy = sx*sy;
-
-    for (i = 0; i < M; i++) {
-      z1 = edges[0][i]/sxy;
-      xy1 = edges[0][i]%sxy;
-      z2 = edges[1][i]/sxy;
-      xy2 = edges[1][i]%sxy;
-      normalWeights[i] = 255 - Math.abs(TypeUtil.unsign(seqData[z1][xy1]) - TypeUtil.unsign(seqData[z2][xy2]));
-    }
-
-
-
-    int[] seedsFunction = new int[M];
-    int numNeighbors = (sz == 1)? 4: 6;
-
-    int j, n;
-
-    for (i = 0; i < numSeeds; i++) {
-      for (j = 1; j <= numNeighbors; j++) {
-        n = GraphUtils.getNeighborNodeEdge(indexSeeds[i], j, sx, sy, sz);
-        if (n != -1) {
-          seedsFunction[n] = normalWeights[n];
-        }
-      }
-    }
-
-    DilateReconstruction.reconstruct(seedsFunction, normalWeights, weights, edges, sx, sy, sz, M, useQuickSort);
-  }
-
-  /**
-   * Adds the weights of each edge considering color-levels (255 levels for 
-   * each channel) and performs geodesic reconstruction.
-   */
-  private void calculateColorWeights() {
-    weights = new int[M];
-    normalWeights = new int[M];
-
     byte[][][] seqData = seq.getDataXYCZAsByte(0);
-
-    int i, c, xy1, z1, xy2, z2, sxy = sx*sy;
+    int i, j, xy1, z1, xy2, z2, sxy = sx*sy;
+    
     int[] vals = new int[seq.getSizeC()];
-
+    normalWeights = new int[M];
     for (i = 0; i < M; i++) {
       z1 = edges[0][i]/sxy;
       xy1 = edges[0][i]%sxy;
       z2 = edges[1][i]/sxy;
       xy2 = edges[1][i]%sxy;
-
-      for (c = 0; c < vals.length; c++) {
-        vals[c] = Math.abs(TypeUtil.unsign(seqData[z1][c][xy1]) - TypeUtil.unsign(seqData[z2][c][xy2]));
-        if (c == 0) {
-          normalWeights[i] = vals[c];
+      for (j = 0; j < seq.getSizeC(); j++) {
+        vals[j] = Math.abs(TypeUtil.unsign(seqData[z1][j][xy1]) - TypeUtil.unsign(seqData[z2][j][xy2]));
+        if (j == 0) {
+          normalWeights[i] = 255 - vals[j];
         } else {
-          normalWeights[i] = Math.max(vals[c], normalWeights[i]);
+          normalWeights[i] = Math.min(normalWeights[i], 255 - vals[j]);
         }
       }
-      normalWeights[i] = 255 - normalWeights[i];
     }
 
+    
+    int numNeighbors = (sz == 1)? 4: 6;
+    int n;
 
     int[] seedsFunction = new int[M];
-    int numNeighbors = (sz == 1)? 4: 6;
-
-    int j, n;
-
     for (i = 0; i < numSeeds; i++) {
       for (j = 1; j <= numNeighbors; j++) {
         n = GraphUtils.getNeighborNodeEdge(indexSeeds[i], j, sx, sy, sz);
@@ -236,8 +178,43 @@ public class GraphPW {
         }
       }
     }
-
+    
+    weights = new int[M];
+    // if not dilated the result of segmentation is voronoi because weights are all 0.
     DilateReconstruction.reconstruct(seedsFunction, normalWeights, weights, edges, sx, sy, sz, M, useQuickSort);
+  }
+  
+  public Sequence getSequenceGradient() {
+    int k, l, x, y, z, n;
+    double w;
+    int numNeighbors = (sz == 1)? 4: 6;
+    Sequence result = new Sequence(seq.getName() + "Gradient");
+    result.beginUpdate();
+    for (z = 0; z < sz; z++) {
+      result.setImage(0, z, new IcyBufferedImage(sx, sy, 1, DataType.DOUBLE));
+    }
+    
+    double[][] resData = result.getDataXYZAsDouble(0, 0);
+    for (z = 0; z < sz; z++) {
+      for (y = 0; y < sy; y++) {
+        for (x = 0; x < sx; x++) {
+          l = 0;
+          w = 0;
+          for (k = 1; k <= numNeighbors; k++) {
+            n = GraphUtils.getNeighborNodeEdge(x + y*sx + z*sy*sx, k, sx, sy, sz);
+            if (n != -1) {
+              w += weights[n];
+              l++;
+            }
+          }
+          resData[z][x + y*sx] = ((2.0*w)/(double)l);
+        }
+      }
+    }
+    result.dataChanged();
+    result.endUpdate();
+    
+    return result;
   }
 
   /**
@@ -246,10 +223,10 @@ public class GraphPW {
    */
   public void executeWatershed() {
     if(useGeo) {
-      seqResult = PowerWatershedQ2(edges, weights, weights, 255, indexSeeds, indexLabels, numSeeds, sx, sy, sz, numLabels);
+      seqResult = executePWQ2(edges, weights, weights, 255, indexSeeds, indexLabels, numSeeds, sx, sy, sz, numLabels);
     }
     else {
-      seqResult = PowerWatershedQ2(edges, weights, normalWeights, 255, indexSeeds, indexLabels, numSeeds, sx, sy, sz, numLabels);
+      seqResult = executePWQ2(edges, weights, normalWeights, 255, indexSeeds, indexLabels, numSeeds, sx, sy, sz, numLabels);
     }
   }
 
@@ -268,7 +245,7 @@ public class GraphPW {
    * @param numLabels Number of different labels
    * @return The result x of the energy function minimization
    */
-  private Sequence PowerWatershedQ2(int[][] edges, int[] weights,
+  private Sequence executePWQ2(int[][] edges, int[] weights,
       int[] normalWeights, int maxWeight, int[] indexSeeds, int[] indexLabels,
       int numSeeds, int sx, int sy, int sz, int numLabels) {
 
@@ -332,9 +309,9 @@ public class GraphPW {
     }
 
     if (useQuickSort) {
-      GraphUtils.BinSort(sortedWeights, sortedEdges, M, maxWeight + 1);
+      GraphUtils.binSortDec(sortedWeights, sortedEdges, M, maxWeight + 1);
     } else {
-      GraphUtils.quickStochasticSort(sortedWeights, sortedEdges, 0, M - 1);
+      GraphUtils.quickStochasticSortDec(sortedWeights, sortedEdges, 0, M - 1);
     }
 
     int edgeCount = 0;
@@ -344,12 +321,12 @@ public class GraphPW {
     while (edgeCount < M) {
       do {
         edgeMax = sortedEdges[edgeCount++];
-        if (edgeCount == M) {
+        if (edgeCount >= M) {
           break;
         }
       } while(edgeIndicators[edgeMax]);
 
-      if (edgeCount == M) {
+      if (edgeCount >= M) {
         break;
       }
 
@@ -442,10 +419,11 @@ public class GraphPW {
             sortedWeights[k] = normalWeights[sortedNormalEdges[k]];
           }
           
+          
           if (useQuickSort) {
-            GraphUtils.BinSort(sortedWeights, sortedNormalEdges, numEdges, maxWeight + 1);
+            GraphUtils.binSortDec(sortedWeights, sortedNormalEdges, numEdges, maxWeight + 1);
           } else {
-            GraphUtils.quickStochasticSort(sortedEdges, sortedNormalEdges, 0, numEdges - 1);
+            GraphUtils.quickStochasticSortDec(sortedEdges, sortedNormalEdges, 0, numEdges - 1);
           }
           
           // Merge nodes for edges of real max weight

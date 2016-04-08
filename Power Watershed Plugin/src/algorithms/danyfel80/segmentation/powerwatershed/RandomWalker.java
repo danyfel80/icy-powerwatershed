@@ -30,7 +30,7 @@ public class RandomWalker {
       int[] verticesIndex, int[] vertexIndicators, int N,
       int[] seedsIndex, double[][] boundaryValues, int numBoundaries, int numLabels,
       double[][] proba) {
-
+    
     int i, j, k, l, v1, v2;
     boolean[] isSeededVertex = new boolean[N];
     int[] sparseIndicators = new int[N];
@@ -46,7 +46,7 @@ public class RandomWalker {
       v2 = vertexIndicators[edgesIndex[1][j]];
       if (v1 < v2) {
         for (i = 0; i < 2; i++) {
-          edgesIndex[i][j] = vertexIndicators[edgesIndex[j][i]];
+          edgesIndex[i][j] = vertexIndicators[edgesIndex[i][j]];
           sparseIndicators[edgesIndex[i][j]]++;
         }
       } else {
@@ -63,6 +63,7 @@ public class RandomWalker {
       isSeededVertex[seedsIndex[i]] = true;
     }
 
+    try {
     // The system to solve is A x = -B X2
     Dcs A, A2, B, B2;
 
@@ -130,8 +131,12 @@ public class RandomWalker {
 
       return true;
     }
-
+    } catch (Exception e) {
+      System.err.println("Random walker failed");
+      e.printStackTrace();
+    }
     return false;
+    
   }
 
   /**
@@ -144,7 +149,7 @@ public class RandomWalker {
   private static void sortEdges(int[][] edgesIndex, int M,
       int[] sameEdgeCounts) {
     int i, j;
-    GraphUtils.quickStochasticSort(edgesIndex[0], edgesIndex[1], 0, M - 1);
+    GraphUtils.quickStochasticSortInc(edgesIndex[0], edgesIndex[1], 0, M - 1);
     i = 0;
     while (i < M) {
       j = i;
@@ -152,7 +157,7 @@ public class RandomWalker {
         i++;
       }
       if (i != j) {
-        GraphUtils.quickStochasticSort(edgesIndex[1], edgesIndex[0], j, i - j);
+        GraphUtils.quickStochasticSortInc(edgesIndex[1], edgesIndex[0], j, i - j);
       }
       i++;
     }

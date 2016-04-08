@@ -27,12 +27,13 @@ public class PowerWatershedSegmentation extends SegmentationAlgorithm {
   public PowerWatershedSegmentation(Sequence sequence, List<ROI> seeds, boolean useGeo, boolean useGrayLevels) throws BadHistogramParameters {
     this.useGeo = useGeo;
     inSequence = sequence;
-    double max  = 0;
-    for (int i = 0; i < inSequence.getSizeC(); i++) {
-      max = Math.max(inSequence.getChannelMax(0), max);
+    
+    if (inSequence.getDataType_() != DataType.UBYTE) {
+      treatedSequence = SequenceUtil.convertToType(inSequence, DataType.UBYTE, true);
+    } else {
+      treatedSequence = SequenceUtil.getCopy(inSequence);
     }
-    treatedSequence = (max > 255)? SequenceUtil.convertToType(inSequence, DataType.UBYTE, true): inSequence; 
-    isGraySequence = (inSequence.getSizeC() == 1)? true: useGrayLevels;
+    isGraySequence = inSequence.getSizeC() == 1 || useGrayLevels;
     
     if(isGraySequence) {
       treatedSequence = SequenceUtil.toGray(treatedSequence);
@@ -47,7 +48,7 @@ public class PowerWatershedSegmentation extends SegmentationAlgorithm {
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters {
     long startTime = System.nanoTime();
-    graph = new GraphPW(treatedSequence, seeds, useGeo, isGraySequence, false);
+    graph = new GraphPW(treatedSequence, seeds, useGeo, false);
     long endTime = System.nanoTime();
     System.out.println("graph object created: " + ((endTime-startTime)/1000000) + " msec...");
     startTime = System.nanoTime();
@@ -63,7 +64,7 @@ public class PowerWatershedSegmentation extends SegmentationAlgorithm {
     endTime = System.nanoTime();
     System.out.println("weights computed: " + ((endTime-startTime)/1000000) + " msec...");
   }
-
+  
   /* (non-Javadoc)
    * @see algorithms.danyfel80.segmentation.SegmentationAlgorithm#executeSegmentation(java.util.List)
    */
@@ -96,6 +97,18 @@ public class PowerWatershedSegmentation extends SegmentationAlgorithm {
     return copy;
   }
   
+  /**
+   * @return The sequence actually used to perform the processing
+   */
+  public Sequence getTreatedSequence() {
+    return treatedSequence;
+  }
   
+  /**
+   * @return The gradient computed from the graph.
+   */
+  public Sequence getSequenceGradient() {
+    return graph.getSequenceGradient();
+  }
 
 }

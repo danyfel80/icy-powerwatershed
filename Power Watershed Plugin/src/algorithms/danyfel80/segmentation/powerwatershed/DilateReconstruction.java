@@ -17,8 +17,16 @@ public class DilateReconstruction {
    * @param sz Size in Z of sequence
    * @param M Amount of edges
    */
-  public static void reconstruct(int[] seedsFunction, int[] originalWeights, 
-      int[] resultWeights, int[][] edges, int sx, int sy,int sz, int M, boolean useQuickSort) {
+  public static void reconstruct(
+      int[] seedsFunction, 
+      int[] originalWeights, 
+      int[] resultWeights, 
+      int[][] edges, 
+      int sx, 
+      int sy,
+      int sz, 
+      int M,
+      boolean useQuickSort) {
 
     int k, p, i, n;
     boolean[] markedEdges = new boolean[M];
@@ -33,16 +41,16 @@ public class DilateReconstruction {
     }
 
     if (useQuickSort) {
-      GraphUtils.BinSort(seedsFunction, sortedEdges, M, MAX_W+1);
+      GraphUtils.binSortInc(seedsFunction, sortedEdges, M, MAX_W+1);
     } else {
-      GraphUtils.quickStochasticSort(seedsFunction, sortedEdges, 0, M-1);
+      GraphUtils.quickStochasticSortInc(seedsFunction, sortedEdges, 0, M-1);
     }
 
     // First pass
     if (sz == 1) { // 2D image
       for (k = M - 1; k >= 0; k--) {
         p = sortedEdges[k];
-        for (i = 1; i <= 6; i += 1) { // parcourt les 6 voisins  
+        for (i = 1; i <= 6; i++) { // parcourt les 6 voisins  
           n = GraphUtils.getNeighborEdge(p, i, sx, sy, sz);
           if (n != -1) {
             if (markedEdges[n]) { 
@@ -55,7 +63,7 @@ public class DilateReconstruction {
     } else { // 3D image
       for (k = M - 1; k >= 0; k--) {
         p = sortedEdges[k];
-        for (i = 1; i <= 12; i += 1) { // parcourt les 12 voisins  
+        for (i = 1; i <= 12; i++) { // parcourt les 12 voisins  
           n = GraphUtils.getNeighborEdge3D(edges[0][p], edges[1][p], p, i, sx, sy, sz);
           if (n != -1)
             if(markedEdges[n])
@@ -87,8 +95,8 @@ public class DilateReconstruction {
    * @param normalWeights
    * @param weights
    */
-  private static void elementLinkGeodesicDilate(int childedge, int parentEdge, int[] fathers,
-      int[] normalWeights, int[] weights) {
+  private static void elementLinkGeodesicDilate(int childedge, int parentEdge, 
+      int[] fathers, int[] normalWeights, int[] weights) {
     int reconstructedNode = GraphUtils.findElement(childedge, fathers);
 
     if (reconstructedNode != parentEdge) {

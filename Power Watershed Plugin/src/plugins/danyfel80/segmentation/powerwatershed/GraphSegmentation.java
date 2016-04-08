@@ -182,12 +182,16 @@ public class GraphSegmentation extends EzPlug {
         break;
       case PowerWatershedQ2:
         startTime = System.nanoTime();
-        algo = new PowerWatershedSegmentation(
+        PowerWatershedSegmentation a = new PowerWatershedSegmentation(
             inSequence.getValue(), 
             inSeedsSequence.getValue().getROIs(ROI.class), 
-            inUseGeodesicReconstruction.getValue(), 
+            inUseGeodesicReconstruction.getValue(),
             inUseGrayLevels.getValue());
         endTime = System.nanoTime();
+        algo = a;
+        addSequence(a.getTreatedSequence());
+        addSequence(a.getSequenceGradient());
+//        return;
         break;
       case ShortestPathForest:
 
