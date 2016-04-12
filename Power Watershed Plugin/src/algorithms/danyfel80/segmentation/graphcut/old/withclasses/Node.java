@@ -1,7 +1,7 @@
 /**
  * 
  */
-package algorithms.danyfel80.segmentation.graphcut;
+package algorithms.danyfel80.segmentation.graphcut.old.withclasses;
 
 /**
  * @author Daniel Felipe Gonzalez Obando

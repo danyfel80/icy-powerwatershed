@@ -24,7 +24,7 @@ eclipse {
           node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/adufour/blocks/Blocks.jar'])
           node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/adufour/ezplug/EzPlug.jar'])
           node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/ylemontag/histogram/gui/HistogramPlugin.jar'])
-          
+          node.appendNode('classpathentry', [kind: 'var', path: 'ICY_HOME/plugins/stef/roi/bloc/RoiToSequence.jar'])   
       }
     }
   }

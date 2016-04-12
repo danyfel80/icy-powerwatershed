@@ -1,10 +1,16 @@
 package algorithms.danyfel80.segmentation.powerwatershed;
 
-import edu.emory.mathcs.csparsej.tdouble.Dcs_common.Dcs;
+/*import edu.emory.mathcs.csparsej.tdouble.Dcs_common.Dcs;
 import edu.emory.mathcs.csparsej.tdouble.Dcs_compress;
 import edu.emory.mathcs.csparsej.tdouble.Dcs_lusol;
 import edu.emory.mathcs.csparsej.tdouble.Dcs_multiply;
-import edu.emory.mathcs.csparsej.tdouble.Dcs_util;
+import edu.emory.mathcs.csparsej.tdouble.Dcs_util;*/
+
+import edu.emory.mathcs.csparsej.tfloat.Scs_common.Scs;
+import edu.emory.mathcs.csparsej.tfloat.Scs_compress;
+import edu.emory.mathcs.csparsej.tfloat.Scs_lusol;
+import edu.emory.mathcs.csparsej.tfloat.Scs_multiply;
+import edu.emory.mathcs.csparsej.tfloat.Scs_util;
 
 /**
  * @author Daniel Felipe Gonzalez Obando
@@ -20,7 +26,7 @@ public class RandomWalker {
    * @param vertexIndicators Boolean array of vertices
    * @param N Number of vertices
    * @param seedsIndex List of nodes that are seeded
-   * @param boundaryValues Associated values for seeds (labels)
+   * @param localLabels Associated values for seeds (labels)
    * @param numBoundaries Amount of seeded nodes
    * @param numLabels Amount of different labels
    * @param proba Solution to the Dirichlet problem
@@ -28,8 +34,8 @@ public class RandomWalker {
    */
   public static boolean ExecuteRandomWalker(int[][] edgesIndex, int M,
       int[] verticesIndex, int[] vertexIndicators, int N,
-      int[] seedsIndex, double[][] boundaryValues, int numBoundaries, int numLabels,
-      double[][] proba) {
+      int[] seedsIndex, float[][] localLabels, int numBoundaries, int numLabels,
+      float[][] proba) {
     
     int i, j, k, l, v1, v2;
     boolean[] isSeededVertex = new boolean[N];
@@ -65,32 +71,33 @@ public class RandomWalker {
 
     try {
     // The system to solve is A x = -B X2
-    Dcs A, A2, B, B2;
+    
+    Scs A, A2, B, B2;
 
     // Building matrix A: Laplacian for unseeded nodes
-    A2 = Dcs_util.cs_spalloc(N-numBoundaries, N-numBoundaries, M*2 + N, true, true);
+    A2 = Scs_util.cs_spalloc(N-numBoundaries, N-numBoundaries, M*2 + N, true, true);
     if (fillA(A2, N, M, numBoundaries, edgesIndex, isSeededVertex, sparseIndicators, sameEdgeCounts)) {
       // A = compressed-column form of A2
-      A = Dcs_compress.cs_compress(A2);
+      A = Scs_compress.cs_compress(A2);
       A2 = null;
 
       // Building boundary matrix B
-      B2 = Dcs_util.cs_spalloc(N - numBoundaries, numBoundaries, 2*M + N, true, true);
+      B2 = Scs_util.cs_spalloc(N - numBoundaries, numBoundaries, 2*M + N, true, true);
       fillB(B2, N, M, numBoundaries, edgesIndex, isSeededVertex, sparseIndicators, sameEdgeCounts);
-      B = Dcs_compress.cs_compress(B2);
+      B = Scs_compress.cs_compress(B2);
       B2 = null;
 
       // Building the right hand side of the system
-      Dcs X = Dcs_util.cs_spalloc(numBoundaries, 1, numBoundaries, true, true);
-      Dcs X2;
+      Scs X = Scs_util.cs_spalloc(numBoundaries, 1, numBoundaries, true, true);
+      Scs X2;
       int rnz, count;
-      Dcs bTmp;
-      double[] b = new double[N - numBoundaries];
+      Scs bTmp;
+      float[] b = new float[N - numBoundaries];
       for (l = 0; l < numLabels - 1; l++) {
         // Building vector X
         rnz = 0;
         for (i = 0; i < numBoundaries; i++) {
-          X.x[rnz] = boundaryValues[l][i];
+          X.x[rnz] = localLabels[l][i];
           X.p[rnz] = 0;
           X.i[rnz] = i;
           rnz++;
@@ -99,8 +106,8 @@ public class RandomWalker {
         X.m = numBoundaries;
         X.n = 1;
 
-        X2 = Dcs_compress.cs_compress(X);
-        bTmp = Dcs_multiply.cs_multiply(B, X2);
+        X2 = Scs_compress.cs_compress(X);
+        bTmp = Scs_multiply.cs_multiply(B, X2);
 
         for(i = 0; i < N - numBoundaries; i++) {
           b[i] = 0;
@@ -111,7 +118,7 @@ public class RandomWalker {
         }
 
         // Solve Ax = b by LU decomposition, order = 1
-        Dcs_lusol.cs_lusol(1, A, b, 1e-7);
+        Scs_lusol.cs_lusol(1, A, b, 1e-7f);
 
         count = 0;
         for (k = 0; k < N; k++) {
@@ -123,7 +130,7 @@ public class RandomWalker {
 
         // Enforce boundaries exactly
         for (k = 0; k < numBoundaries; k++) {
-          proba[l][verticesIndex[seedsIndex[k]]] = boundaryValues[l][k];
+          proba[l][verticesIndex[seedsIndex[k]]] = localLabels[l][k];
         }
         X2 = null;
         bTmp = null;
@@ -175,7 +182,7 @@ public class RandomWalker {
 
   /**
    * Builds matrix A (Laplacian for unseeded nodes)
-   * @param A Matrix A to fill
+   * @param a2 Matrix A to fill
    * @param N Amount of nodes
    * @param M Amount of edges
    * @param numBoundaries Amount of seeds
@@ -185,7 +192,7 @@ public class RandomWalker {
    * @param sameEdgeCounts Indicator of same edges presence
    * @return
    */
-  private static boolean fillA(Dcs A, int N, int M, int numBoundaries,
+  private static boolean fillA(Scs a2, int N, int M, int numBoundaries,
       int[][] edgesIndex, boolean[] isSeededVertex, int[] sparseIndicators,
       int[] sameEdgeCounts) {
     int k = 0;
@@ -194,9 +201,9 @@ public class RandomWalker {
     // Fill the diagonal
     for (k = 0; k < N; k++) {
       if (!isSeededVertex[k]) {
-        A.x[rnz] = sparseIndicators[k];
-        A.i[rnz] = rnz;
-        A.p[rnz] = rnz;
+        a2.x[rnz] = sparseIndicators[k];
+        a2.i[rnz] = rnz;
+        a2.p[rnz] = rnz;
         rnz++;
       }
     }
@@ -214,21 +221,21 @@ public class RandomWalker {
 
     for(k = 0; k < M; k++) {
       if (!isSeededVertex[edgesIndex[0][k]] && !isSeededVertex[edgesIndex[1][k]]) {
-        A.x[rnz] = -sameEdgeCounts[k] - 1;
-        A.i[rnz] = sparseIndicators[edgesIndex[0][k]];
-        A.p[rnz] = sparseIndicators[edgesIndex[1][k]];
+        a2.x[rnz] = -sameEdgeCounts[k] - 1;
+        a2.i[rnz] = sparseIndicators[edgesIndex[0][k]];
+        a2.p[rnz] = sparseIndicators[edgesIndex[1][k]];
         rnz++;
-        A.x[rnz] = -sameEdgeCounts[k] - 1;
-        A.p[rnz] = sparseIndicators[edgesIndex[0][k]];
-        A.i[rnz] = sparseIndicators[edgesIndex[1][k]];
+        a2.x[rnz] = -sameEdgeCounts[k] - 1;
+        a2.p[rnz] = sparseIndicators[edgesIndex[0][k]];
+        a2.i[rnz] = sparseIndicators[edgesIndex[1][k]];
         rnz++;
         k += sameEdgeCounts[k];
       }
     }
 
-    A.nz = rnz;
-    A.m = N - numBoundaries;
-    A.n = N - numBoundaries;
+    a2.nz = rnz;
+    a2.m = N - numBoundaries;
+    a2.n = N - numBoundaries;
     return true;
   }
 
@@ -243,7 +250,7 @@ public class RandomWalker {
    * @param sparseIndicators Array of index separating seeded and unseeded nodes
    * @param sameEdgeCounts Indicator of same edges presence
    */
-  private static void fillB(Dcs B, int N, int M, int numBoundaries,
+  private static void fillB(Scs B, int N, int M, int numBoundaries,
       int[][] edgesIndex, boolean[] isSeededVertex, int[] sparseIndicators,
       int[] sameEdgeCounts) {
     int k;

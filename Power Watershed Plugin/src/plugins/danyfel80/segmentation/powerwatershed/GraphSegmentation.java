@@ -39,6 +39,7 @@ public class GraphSegmentation extends EzPlug {
   // - Graphcuts
   private EzVarBoolean inUse8Connected;
   private EzVarDouble inLambda;
+  private EzVarDouble inEdgeVariance;
   
   // - PowerWatershed Q2
   private EzVarBoolean inUseGrayLevels;
@@ -70,8 +71,15 @@ public class GraphSegmentation extends EzPlug {
     inLambda = new EzVarDouble("Lambda");
     inLambda.setValue(1.0);
     inLambda.setToolTipText("The importance of inter-node weight");
+    inLambda.setMinValue(0.0);
+    inEdgeVariance = new EzVarDouble("Edge variance");
+    inEdgeVariance.setValue(25.0);
+    inEdgeVariance.setToolTipText("The variance in pixels' neighborhood");
+    inEdgeVariance.setMinValue(0.001);
+    inEdgeVariance.setMaxValue(65025.0);
     optional.add(inUse8Connected);
     optional.add(inLambda);
+    optional.add(inEdgeVariance);
     
     inUseGrayLevels = new EzVarBoolean("Use gray levels", false);
     inUseGrayLevels.setToolTipText("If true sequence is converted to gray levels.");
@@ -95,6 +103,7 @@ public class GraphSegmentation extends EzPlug {
         case GraphCuts:
           inUse8Connected.setVisible(true);
           inLambda.setVisible(true);
+          inEdgeVariance.setVisible(true);
           break;
         case PowerWatershedQ1:
           break;
@@ -126,6 +135,7 @@ public class GraphSegmentation extends EzPlug {
     addEzComponent(inSegmentationType);
     addEzComponent(inUse8Connected);
     addEzComponent(inLambda);
+    addEzComponent(inEdgeVariance);
     addEzComponent(inUseGrayLevels);
     addEzComponent(inUseGeodesicReconstruction);
     
@@ -165,14 +175,17 @@ public class GraphSegmentation extends EzPlug {
 
         break;
       case GraphCuts:
-        double lambda = 1;
         startTime = System.nanoTime();
-        algo = new GraphCutSegmentation(
+        GraphCutSegmentation a3 = new GraphCutSegmentation(
             inSequence.getValue(), 
-            lambda, 
-            inUse8Connected.getValue(),
-            inSeedsSequence.getValue().getROIs(ROI.class));
+            inSeedsSequence.getValue().getROIs(ROI.class),
+            inLambda.getValue(),
+            inEdgeVariance.getValue(),
+            inUse8Connected.getValue());
         endTime = System.nanoTime();
+//        addSequence(a3.getTreatedSequence());
+        algo = a3;
+//        return;
         break;
       case RandomWalker:
 
@@ -182,15 +195,15 @@ public class GraphSegmentation extends EzPlug {
         break;
       case PowerWatershedQ2:
         startTime = System.nanoTime();
-        PowerWatershedSegmentation a = new PowerWatershedSegmentation(
+        PowerWatershedSegmentation a6 = new PowerWatershedSegmentation(
             inSequence.getValue(), 
             inSeedsSequence.getValue().getROIs(ROI.class), 
             inUseGeodesicReconstruction.getValue(),
             inUseGrayLevels.getValue());
         endTime = System.nanoTime();
-        algo = a;
-        addSequence(a.getTreatedSequence());
-        addSequence(a.getSequenceGradient());
+        algo = a6;
+//        addSequence(a6.getTreatedSequence());
+        addSequence(a6.getSequenceGradient());
 //        return;
         break;
       case ShortestPathForest:
@@ -217,7 +230,7 @@ public class GraphSegmentation extends EzPlug {
     Sequence result = algo.getSegmentationSequenceWithROIs();
     addSequence(algo.getSegmentationSequence());
     addSequence(result);
-
+    System.gc();
   }
 
   /* (non-Javadoc)

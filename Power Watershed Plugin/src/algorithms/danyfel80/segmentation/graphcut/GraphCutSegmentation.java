@@ -1,381 +1,280 @@
+/**
+ * 
+ */
 package algorithms.danyfel80.segmentation.graphcut;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import algorithms.danyfel80.segmentation.SegmentationAlgorithm;
-import algorithms.danyfel80.segmentation.graphcut.Graph.TerminalType;
-import icy.roi.BooleanMask2D;
+import icy.image.IcyBufferedImage;
 import icy.roi.ROI;
 import icy.sequence.Sequence;
+import icy.sequence.SequenceDataIterator;
 import icy.sequence.SequenceUtil;
+import icy.type.DataIteratorUtil;
 import icy.type.DataType;
-import icy.type.point.Point5D;
-import plugins.kernel.roi.roi2d.ROI2DArea;
+import icy.type.TypeUtil;
+import plugins.kernel.roi.roi3d.ROI3DArea;
 import plugins.ylemontag.histogram.BadHistogramParameters;
 import plugins.ylemontag.histogram.Histogram;
 
 /**
  * @author Daniel Felipe Gonzalez Obando
- *
  */
-public class GraphCutSegmentation extends SegmentationAlgorithm {
+// TODO fix for color images
+public class GraphCutSegmentation extends SegmentationAlgorithm{
 
-  private final double lambda;
-  private final double K;
-  private final boolean use8Connected;
-
-  @SuppressWarnings("unused")
   private Sequence inSequence;
-  private Sequence inGraySequence;
-  private int sizeX;
-  private int sizeY;
-  private int sizeZ;
+  private Sequence treatedSequence;
+  private List<ROI> seeds;
+  private double lambda;
+  private boolean use8Connected;
 
-  private Graph graph;
+  private int sx, sy, sz;
+  private int numE, numN;
+  private GraphCutMethod graphCut;
 
-  private List<Color> colors;
-  private Sequence segSequence;
+  private double edgeVariance;
+
+  private Sequence resultSegmentation;
+  private List<? extends ROI> resultROIs;
 
   /**
-   * @param lambda 
-   * @param inSequence 
-   * @throws BadHistogramParameters 
    * 
+   * @param sequence
+   * @param seeds
+   * @param lambda
+   * @param use8Connected
+   * @throws BadHistogramParameters
    */
-  public GraphCutSegmentation(Sequence inSequence, double lambda, boolean use8Connected, List<ROI> seeds) throws BadHistogramParameters {
-    this.inSequence = inSequence;
-    this.inGraySequence = SequenceUtil.toGray(inSequence);
-    this.inGraySequence = SequenceUtil.convertToType(inSequence, DataType.DOUBLE, false);
-
+  public GraphCutSegmentation(Sequence sequence, List<ROI> seeds, double lambda, double edgeVariance, Boolean use8Connected) throws BadHistogramParameters {
+    inSequence = sequence;
+    this.seeds = seeds;
     this.lambda = lambda;
-    this.K = 27.0;
-    
     this.use8Connected = use8Connected;
+    this.edgeVariance = edgeVariance;
+    /*if (inSequence.getDataType_() == DataType.BYTE) {
+      treatedSequence = inSequence;
+    } else {
+      treatedSequence = SequenceUtil.convertToType(inSequence, DataType.BYTE, true);
+    }*/
+    treatedSequence = SequenceUtil.toGray(inSequence);
+    treatedSequence.setName(inSequence.getName());
+    sx = treatedSequence.getSizeX();
+    sy = treatedSequence.getSizeY();
+    sz = treatedSequence.getSizeZ();
 
-    this.sizeX = inSequence.getSizeX();
-    this.sizeY = inSequence.getSizeY();
-    this.sizeZ = inSequence.getSizeZ();
     prepareGraph(seeds);
-
-    segSequence = SequenceUtil.getCopy(inSequence);
-//    segSequence = new Sequence(inSequence.getName() + "_Segmentation");
-//    segSequence.beginUpdate();
-//    for (int z = 0; z < sizeZ; z++) {
-//      segSequence.setImage(0, z, new IcyBufferedImage(sizeX, sizeY, 3, DataType.DOUBLE));
-//    }
-//    segSequence.endUpdate();
+    System.out.println("Graph Cut Segmentation(lambda=" + lambda + ", variance=" + edgeVariance + ", " + (use8Connected?"8": "4") + "-connect)");
   }
 
-  /* (non-Javadoc)
-   * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#prepareGraph()
-   */
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters{
-    int numEdges = 0;
-    if (use8Connected) {
-      numEdges = sizeZ*(4*sizeY*sizeX - 3*sizeY - 3*sizeX + 2) + (sizeZ-1)*(8*sizeY*sizeX - 6*sizeY - 6*sizeX + 4);
-    } else {
-      numEdges = sizeZ*(2*sizeY*sizeX - sizeY - sizeX + 2) + (sizeZ-1)*(sizeY*sizeX);
-    }
-    graph = new Graph(sizeX*sizeY*sizeZ, numEdges);
-    System.out.println("Nodes=" + (sizeX*sizeY*sizeZ) + ", Edges=" + numEdges);
-    graph.addNodes(sizeX*sizeY*sizeZ);
 
-    double variance = calculateVariance();
+    int x, y, z, dx, dy, dz, currPos, neighPos, i;
+    double probaSrc, probaSnk;
 
-    // set neighbor edges
-    double[][][] inGrayData = inGraySequence.getDataXYCZAsDouble(0);
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
+    // 1. Graph Instantiation
+    int sxy = sx*sy;
+    numN = sxy*sz;
+    numE = (use8Connected)?
+        sz*(12*sxy - 9*sx - 9*sy + 4) - sy*(8*sx + 6) + 6*sx - 2:
+          3*sxy*sz - sxy - sx*sz - sy*sz;
 
-          int idP = getNodeId(x, y, z);
-          if (use8Connected) {
-            // 8 connected graph
-            for (int dz = -1; dz <= 1; dz++) {
-              for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-  
-                  if (dz != 0 || dx!= 0 || dy != 0) {
-                    if (z+dz >= 0 && z+dz < sizeZ &&
-                        x+dx >= 0 && x+dx < sizeX &&
-                        y+dy >= 0 && y+dy < sizeY) {
-                      int idQ = getNodeId(x+dx, y+dy, z+dz);
-                      if (idQ > idP) {
-                        double diff = inGrayData[z][0][x + y*sizeX];
-                        diff -= inGrayData[(z+dz)][0][(x+dx) + (y+dy)*sizeX]; 
-                        double weight = Math.exp(-(diff*diff)/(2.0 * variance)) * (1.0 / Math.sqrt((double)(dx*dx + dy*dy + dz*dz)));
-                        graph.addEdge(idP, idQ, weight, weight);
-                      }
-                    }
+    graphCut = new GraphCutMethod(numN, numE);
+
+    // 2. Neighbor node weights specification
+    byte[][] seqData = treatedSequence.getDataXYZAsByte(0, 0);
+    //edgeVariance = computeVariance();
+    // - For each pixel
+    for (z = 0; z < sz; z++) {
+      for (y = 0; y < sy; y++) {
+        for (x = 0; x < sx; x++) {
+          currPos = z*sxy + y*sx + x;
+
+          // - Take neighbors
+          for (dx = 0; dx < 2 && dx+x < sx; dx++) {
+            for (dy = 0; dy < 2 && dy+y < sy; dy++) {
+              for (dz = 0; dz < 2 && dz+z < sz; dz++) {
+                if (dx+dy+dz > 0) {
+                  if(use8Connected || dx+dy == 0|| dx+dz == 0 || dy+dz == 0) {
+                    neighPos = (z+dz)*sxy + (y+dy)*sx + (x+dx);
+                    
+                    graphCut.setEdgeWeight(
+                        currPos, 
+                        neighPos, 
+                        (float)getEdgeLikelihood(
+                            TypeUtil.unsign(seqData[z][y*sx + x]), 
+                            TypeUtil.unsign(seqData[z+dz][(y+dy)*sx + (x+dx)]), 
+                            dx, dy, dz)
+                        ); // Sets weight on edges in both directions 
                   }
-  
                 }
               }
             }
           }
-          else {
-            // 4 connected graph
-            if (z+1 < sizeZ){
-              int idQ = getNodeId(x, y, z+1);
-              double diff = inGrayData[z][0][x + y*sizeX];
-              diff -= inGrayData[(z+1)][0][(x) + (y)*sizeX]; 
-              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
-              graph.addEdge(idP, idQ, weight, weight);
-            }
-            
-            if (x+1 < sizeX){
-              int idQ = getNodeId(x+1, y, z);
-              double diff = inGrayData[z][0][x + y*sizeX];
-              diff -= inGrayData[(z)][0][(x+1) + (y)*sizeX]; 
-              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
-              graph.addEdge(idP, idQ, weight, weight);
-            }
-            
-            if (y+1 < sizeY){
-              int idQ = getNodeId(x, y+1, z);
-              double diff = inGrayData[z][0][x + y*sizeX];
-              diff -= inGrayData[(z)][0][(x) + (y+1)*sizeX]; 
-              double weight = Math.exp(-(diff*diff)/(2.0 * variance));
-              graph.addEdge(idP, idQ, weight, weight);
-            }
-          }
-
         }
       }
     }
-    
-    // calculate terminal edges
-    colors = new ArrayList<>();
-    for (ROI roi : seeds) {
-      colors.add(roi.getColor());
+
+    // 3. Terminal node weights specification
+    Histogram[] seedHistograms = getSeedHistograms();
+    double[] seedSizes = new double[seeds.size()];
+    for (i = 0; i < seedSizes.length; i++) {
+      seedSizes[i] = seeds.get(i).getNumberOfPoints();
     }
-    //paintSeeds(seeds);
-    addTerminalEdges(seeds);
+    for (z = 0; z < sz; z++) {
+      for (y = 0; y < sy; y++) {
+        for (x = 0; x < sx; x++) {
+          currPos = z*sxy + y*sx + x;
+
+          probaSrc = -Math.log((double)(seedHistograms[0].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[0]));
+          probaSrc = (probaSrc > graphCut.maxTerminalWeight)? graphCut.maxTerminalWeight: probaSrc;
+          //          System.out.print("proba " + probaSrc);
+          probaSnk = -Math.log((double)(seedHistograms[1].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[1]));
+          probaSnk = (probaSnk > graphCut.maxTerminalWeight)? graphCut.maxTerminalWeight: probaSnk;
+          //          System.out.println(" " + probaSnk);
+          //          probaSnk = -Math.log(1.0 - (seedHistograms[0].getBin(TypeUtil.unsign(seqData[z][y*sx + x])).getCount() / (double)seedSizes[0]));
+          graphCut.setTerminalWeights(currPos, (float)(lambda*probaSrc), (float)(lambda*probaSnk), false);
+        }
+      }
+    }
+    SequenceDataIterator sDI;
+    for (i = 0; i < 2; i++) {
+       sDI = new SequenceDataIterator(treatedSequence, seeds.get(i));
+      while (!sDI.done()) {
+        currPos = sDI.getPositionZ()*sxy + sDI.getPositionY()*sx + sDI.getPositionX();
+        graphCut.setTerminalWeights(currPos, graphCut.maxTerminalWeight*i, graphCut.maxTerminalWeight*(1-i), false);
+        sDI.next();
+      }
+    }
+
   }
 
-  private double calculateVariance() {
-    double[][][] inGrayData = inGraySequence.getDataXYCZAsDouble(0);
-    double variance = 0;
+  /**
+   * Computes the gray level variance of the treated sequence
+   * @return gray level variance 
+   */
+  @SuppressWarnings("unused")
+  private double computeVariance() {
+    int z, xy;
+    
+    byte[][] seqData = treatedSequence.getDataXYZAsByte(0, 0);
+    int sxy =  sx*sy;
     double mean = 0;
-    int amount = sizeX*sizeY*sizeZ;
-
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          mean += inGrayData[z][0][x + y*sizeX];
-        }
+    for (z = 0; z < sz; z++) {
+      for (xy = 0; xy < sxy; xy++) {
+        mean += seqData[z][xy];
       }
     }
-    mean /= amount;
+    mean /= sxy*sz;
 
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          double val = inGrayData[z][0][x + y*sizeX] - mean;
-          variance += val*val;
-        }
+    double variance = 0;
+    double val;
+    for (z = 0; z < sz; z++) {
+      for (xy = 0; xy < sxy; xy++) {
+        val = mean - seqData[z][xy];
+        variance += val*val;
       }
     }
-    variance /= amount;
-
+    variance /= sxy*sz;
     return variance;
   }
 
-  private int getNodeId(int x, int y, int z) {
-    return z*sizeX*sizeY + y*sizeX + x;
+  private double getEdgeLikelihood(int value1, int value2, int dx, int dy, int dz) {
+    int diff = value2 - value1;
+    return Math.exp(-(diff*diff)/(2*edgeVariance))/
+        Math.sqrt(dx*dx + dy*dy + dz*dz);
   }
 
+  private Histogram[] getSeedHistograms() throws BadHistogramParameters {
+    Histogram[] hists = new Histogram[seeds.size()];
+    for (int i = 0; i < seeds.size(); i++) {
+      hists[i] = Histogram.compute(treatedSequence, seeds.get(i), true, 64, 0, 255);
+    }
+    return hists;
+  }
 
-
-  /* (non-Javadoc)
-   * @see plugins.danyfel80.segmentation.powerwatershed.classes.SegmentationAlgorithm#executeSegmentation(java.util.List)
-   */
   @Override
   public void executeSegmentation() {
-    
+    int x, y, z, r;
+    int sxy = sx*sy;
 
-    double maxFlow = graph.computeMaxFlow();
-    System.out.println("Max flow = " + maxFlow);
+    double maxFlow = graphCut.computeMaximumFlow(false, null);
+    System.out.printf("Max flow = %f%n", maxFlow);
 
-    paintSegmentation();
-  }
-
-  //  private void paintSeeds(List<ROI> seeds) {
-  //    segSequence.beginUpdate();
-  //    double[][][] segData = segSequence.getDataXYCZAsDouble(0);
-  //    for (int z = 0; z < sizeZ; z++) {
-  //      for (int x = 0; x < sizeX; x++) {
-  //        for (int y = 0; y < sizeY; y++) {
-  //          if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0)))
-  //            segData[z][0][x*sizeY + y] = 1;
-  //          else if (seeds.get(1).contains(new Point5D.Double(x,y,z,0,0)))
-  //            segData[z][0][x*sizeY + y] = 2;
-  //        }
-  //      }
-  //    }
-  //    segSequence.dataChanged();
-  //    segSequence.endUpdate();
-  //  }
-
-  /**
-   * Computes the histogram for each of the seed ROIs.
-   * @return Histogram array (one histogram for each ROI).
-   * @throws BadHistogramParameters 
-   */
-  private Histogram[] getClassesHistograms(List<ROI> seeds) throws BadHistogramParameters {
-    Histogram[] histograms = new Histogram[seeds.size()];
-    for (int i = 0; i < seeds.size(); i++) {
-      histograms[i] = Histogram.compute(inGraySequence, seeds.get(i), true, 256, 0, 255);
+    List<ROI3DArea> resROI = new ArrayList<ROI3DArea>();
+    for (r = 0; r < 2; r++) {
+      resROI.add(new ROI3DArea());
     }
-    return histograms;
-    /*
-    int [] amount = new int[2];
-    double[][] histograms = new double[2][256];
 
-    double [][][] segData = segSequence.getDataXYCZAsDouble(0); 
-    double [][][] imageData = inGraySequence.getDataXYCZAsDouble(0);
+    for (z = 0; z < sz; z++) {
 
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          double v = segData[z][0][x + y*sizeX];
-          if (v > 0) {
-            int p = ((int)imageData[z][0][x + y*sizeX]);
-            histograms[(int)v-1][p] += 1.0;
-            amount[(int)v-1]++;
-          }
+      for (y = 0; y < sy; y++) {
+        for (x = 0; x < sx; x++) {
+          resROI.get((graphCut.getTerminal(z*sxy + y*sx + x) == Terminal.BACKGROUND)? 0: 1).addPoint(x, y, z);
         }
       }
     }
-    double maxVal=0, sum0=0, sum1=0;
-
-    for (int i = 0; i < 256; i++) {
-      //histograms[0][i] /= (double)amount[0];    
-      //histograms[1][i] /= (double)amount[1];
-      sum0 += histograms[0][i];
-      sum1 += histograms[1][i];
-      maxVal = Math.max(histograms[0][i], histograms[1][i]);
-      System.out.printf("[%d]=%f\n", i, histograms[0][i]);
-    }
-    System.out.println("Max histo val = " + maxVal);
-    System.out.println("sum histo 0 = " + sum0);
-    System.out.println("sum histo 1 = " + sum1);
-    System.out.println("quant histo 0 = " + amount[0]);
-    System.out.println("quant histo 1 = " + amount[1]);
-    return histograms;
-     */
-  }
-
-  private void addTerminalEdges(List<ROI> seeds) throws BadHistogramParameters {
-    double [][][] grayData = inGraySequence.getDataXYCZAsDouble(0);
-    Histogram[] histograms = getClassesHistograms(seeds);
-    double [] roiSizes = new double[seeds.size()];
-
-    for (int i = 0; i < seeds.size(); i++) {
-      roiSizes[i] = seeds.get(i).getNumberOfPoints();
-    }
-
-    //    for (int i = 0; i < 256; i++) {
-    //      System.out.println("[" + i + "] = " + (histograms[0].getBin(i).getCount() / roiSizes[0]));
-    //    }
-
-    for (int z = 0; z < sizeZ; z++) {
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          double capacitySource = 0.0;
-          double capacitySink = 0.0;
-          if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0))) { // source seed
-            capacitySource = 0;
-            capacitySink = K;
-          } else if (seeds.get(0).contains(new Point5D.Double(x,y,z,0,0))) { // sink seed
-            capacitySource = K;
-            capacitySink = 0;
-          } else { // if not seed, then use histograms
-            int p = (int)grayData[z][0][x + y*sizeX];
-            double prPSrc = histograms[0].getBin(p).getCount() / roiSizes[0];
-            double prPSnk = histograms[1].getBin(p).getCount() / roiSizes[1];
-            capacitySource = lambda * ((prPSrc > 0.000001)? (-Math.log(prPSrc)): K);
-            capacitySink = lambda * ((prPSnk > 0.000001)? (-Math.log(prPSnk)): K);
-          }
-
-          graph.addTerminalWeights(getNodeId(x, y, z), capacitySink, capacitySource);
-        }
-      }
-    }
-  }
-
-  private void paintSegmentation() {
-    //segSequence.beginUpdate();
-    //double[][][] segData = segSequence.getDataXYCZAsDouble(0);
-    
-    
-    for (int z = 0; z < sizeZ; z++) {
-      
-      boolean[] maskSource = new boolean[sizeX*sizeY];
-      boolean[] maskSink = new boolean[sizeX*sizeY];
-      
-      for (int x = 0; x < sizeX; x++) {
-        for (int y = 0; y < sizeY; y++) {
-          if (graph.getSegment(getNodeId(x, y, z)) == TerminalType.SOURCE) {
-            maskSource[x + y*sizeX] = true;
-            maskSink[x + y*sizeX] = false;
-          }
-          if (graph.getSegment(getNodeId(x, y, z)) == TerminalType.SINK) {
-            maskSource[x + y*sizeX] = false;
-            maskSink[x + y*sizeX] = true;
-          }
-
-          //          if (color < 2) {
-          //            System.out.println(color);
-          //            segData[z][0][x + y*sizeX] = colors.get(color).getRed();
-          //            segData[z][1][x + y*sizeX] = colors.get(color).getGreen();
-          //            segData[z][2][x + y*sizeX] = colors.get(color).getBlue();
-          //          }
-          //          else {
-//          segData[z][0][x + y*sizeX] = 1;
-//          segData[z][1][x + y*sizeX] = 1;
-//          segData[z][2][x + y*sizeX] = 1;
-          //          }
-        }
-      }
-      
-      BooleanMask2D mask2Dsource = new BooleanMask2D(segSequence.getBounds2D(), maskSource);
-      ROI2DArea roiSourceZ = new ROI2DArea(mask2Dsource);
-      roiSourceZ.setZ(z);
-      roiSourceZ.setColor(colors.get(0));
-      segSequence.addROI(roiSourceZ);
-      BooleanMask2D mask2Dsink = new BooleanMask2D(segSequence.getBounds2D(), maskSink);
-      ROI2DArea roiSinkZ = new ROI2DArea(mask2Dsink);
-      roiSinkZ.setZ(z);
-      roiSinkZ.setColor(colors.get(1));
-      segSequence.addROI(roiSinkZ);
-    }
-
-    //segSequence.dataChanged();
-    //segSequence.endUpdate();
+    resROI.get(0).setColor(seeds.get(0).getColor());
+    resROI.get(1).setColor(seeds.get(1).getColor());
+    this.resultROIs = resROI;
   }
 
   @Override
   public Sequence getSegmentationSequence() {
-    // TODO Auto-generated method stub
-    System.err.println("Method not yet implemented.");
-    return null;
+    if (resultSegmentation == null) {
+      resultSegmentation = new Sequence();
+      resultSegmentation.beginUpdate();
+      try
+      {
+        for (int z = 0; z < sz; z++)
+          resultSegmentation.setImage(0, z, new IcyBufferedImage(sx, sy, 1, DataType.UBYTE));
+
+        // set value from ROI(s)
+        int val = 0;
+        for (ROI roi : resultROIs){
+          if (!roi.getBounds5D().isEmpty())
+            DataIteratorUtil.set(new SequenceDataIterator(resultSegmentation, roi), val);
+          val++;
+        }
+
+        // notify data changed
+        resultSegmentation.dataChanged();
+      }
+      finally
+      {
+        resultSegmentation.endUpdate();
+      }
+      resultSegmentation.setName(inSequence.getName() + 
+          "(var" + edgeVariance + 
+          ", lambda" + lambda + 
+          ", " + ((use8Connected)? "8": "4") + "-conn)");
+    }
+    return resultSegmentation;
   }
 
   @Override
   public Collection<? extends ROI> getSegmentationROIs() {
-    // TODO Auto-generated method stub
-    System.err.println("Method not yet implemented.");
-    return null;
+    return resultROIs;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public Sequence getSegmentationSequenceWithROIs() {
-    return segSequence;
+    Sequence result = SequenceUtil.getCopy(treatedSequence);
+    result.addROIs((Collection<ROI>) resultROIs, false);
+    result.setName(inSequence.getName() + 
+        "Segmentation(var" + edgeVariance + 
+        ", lambda" + lambda + 
+        ", " + ((use8Connected)? "8": "4") + "-conn)");
+    return result;
+  }
+
+  public Sequence getTreatedSequence() {
+    return this.treatedSequence;
   }
 
 }

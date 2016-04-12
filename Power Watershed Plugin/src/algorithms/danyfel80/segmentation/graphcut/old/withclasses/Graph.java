@@ -1,4 +1,4 @@
-package algorithms.danyfel80.segmentation.graphcut;
+package algorithms.danyfel80.segmentation.graphcut.old.withclasses;
 
 import java.util.ArrayList;
 import java.util.LinkedList;

@@ -39,7 +39,7 @@ public class GraphPW {
   private int[] weights; // edge weights
   private int[] normalWeights; // edge normalized weights
 
-  public static final double EPSILON = 1e-6;
+  public static final float EPSILON = 0.000001f;
   public static final int MAX_SIZE_PLATEAU = 1000000;
 
   private Sequence seqResult;
@@ -154,6 +154,7 @@ public class GraphPW {
     int val;
     weights = new int[M];
     normalWeights = new int[M];
+    
     for (i = 0; i < M; i++) {
       z1 = edges[0][i]/sxy;
       xy1 = edges[0][i]%sxy;
@@ -273,11 +274,11 @@ public class GraphPW {
 
     boolean success = false, differentSeeds;
 
-    double val;
+    float val;
 
-    double[][] proba = new double[numLabels - 1][];
+    float[][] proba = new float[numLabels - 1][];
     for (i = 0; i < numLabels - 1; i++) {
-      proba[i] = new double[N];
+      proba[i] = new float[N];
       for (j = 0; j < N; j++) {
         proba[i][j] = -1;
       }
@@ -302,9 +303,9 @@ public class GraphPW {
       fathers[i] = i;
     }
 
-    double[][] localLabels = new double[numLabels - 1][];
+    float[][] localLabels = new float[numLabels - 1][];
     for (i = 0; i < numLabels - 1; i++) {
-      localLabels[i] = new double[N];
+      localLabels[i] = new float[N];
     }
 
     int[] sortedWeights = new int[M];
@@ -400,7 +401,7 @@ public class GraphPW {
         differentSeeds = false;
 
         for (i = 0; i < numLabels - 1; i++) {
-          val = -0.5;
+          val = -0.5f;
           for (j = 0; j < numVertices; j++) {
             x = plateauVerticesList[j];
             xr = GraphUtils.findElement(x, fathers);
@@ -532,7 +533,7 @@ public class GraphPW {
     int sxy = sx*sy;
 
     for (j = 0; j < N; j++) {
-      maxi = 0;
+      maxi = 0.0;
       argMax = 0;
       val = 1;
       for (k = 0; k < numLabels - 1; k++) {
@@ -564,7 +565,7 @@ public class GraphPW {
    * @param numLabels Amount of labels
    */
   private void mergeNode(int e1, int e2, int[] ranks, int[] fathers,
-      double[][] proba, int numLabels) {
+      float[][] proba, int numLabels) {
     int k, re1, re2;
     re1 = GraphUtils.findElement(e1, fathers);
     re2 = GraphUtils.findElement(e2, fathers);
