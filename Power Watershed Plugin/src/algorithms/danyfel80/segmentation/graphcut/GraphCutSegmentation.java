@@ -29,15 +29,22 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
   private Sequence inSequence;
   private Sequence treatedSequence;
   private List<ROI> seeds;
-  private double lambda;
+  private float lambda;
   private boolean use8Connected;
+  private boolean createProbas;
 
   private int sx, sy, sz;
   private int numE, numN;
   private GraphCutMethod graphCut;
 
+  private Histogram[] seedHistograms;
+  private double[] seedSizes;
+  
   private double edgeVariance;
+  private int edgeStdDev;
 
+  private Sequence gradientSequence;
+  private Sequence terminalSequence;
   private Sequence resultSegmentation;
   private List<? extends ROI> resultROIs;
 
@@ -49,12 +56,14 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
    * @param use8Connected
    * @throws BadHistogramParameters
    */
-  public GraphCutSegmentation(Sequence sequence, List<ROI> seeds, double lambda, double edgeVariance, Boolean use8Connected) throws BadHistogramParameters {
+  public GraphCutSegmentation(Sequence sequence, List<ROI> seeds, float lambda, double edgeVariance, boolean use8Connected, boolean createProbas) throws BadHistogramParameters {
     inSequence = sequence;
     this.seeds = seeds;
     this.lambda = lambda;
     this.use8Connected = use8Connected;
     this.edgeVariance = edgeVariance;
+    this.edgeStdDev = (int) Math.ceil(Math.sqrt(edgeVariance));
+    this.createProbas = createProbas;
     /*if (inSequence.getDataType_() == DataType.BYTE) {
       treatedSequence = inSequence;
     } else {
@@ -73,9 +82,13 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters{
 
-    int x, y, z, dx, dy, dz, currPos, neighPos, i;
-    double probaSrc, probaSnk;
-
+    int x, y, z, dx, dy, dz, currPos, neighPos, i, currVal, neighVal;
+    float probaSrc, probaSnk;
+    
+    if (createProbas) {
+      gradientSequence = new Sequence(inSequence.getName() + "Gradient");
+      terminalSequence = new Sequence(inSequence.getName() + "TerminalProbabilities");
+    }
     // 1. Graph Instantiation
     int sxy = sx*sy;
     numN = sxy*sz;
@@ -86,14 +99,23 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     graphCut = new GraphCutMethod(numN, numE);
 
     // 2. Neighbor node weights specification
+    float maxDiff = 0, diffN;
+    if(createProbas) gradientSequence.beginUpdate();
     byte[][] seqData = treatedSequence.getDataXYZAsByte(0, 0);
     //edgeVariance = computeVariance();
     // - For each pixel
     for (z = 0; z < sz; z++) {
+      float[] gradientData = null;
+      if(createProbas) {
+        gradientSequence.setImage(0, z, new IcyBufferedImage(sx, sy, 1, DataType.FLOAT));
+        gradientData = gradientSequence.getDataXYAsFloat(0, z, 0);
+      }
       for (y = 0; y < sy; y++) {
         for (x = 0; x < sx; x++) {
           currPos = z*sxy + y*sx + x;
-
+          currVal = TypeUtil.unsign(seqData[z][y*sx + x]);
+          diffN = 0;
+          
           // - Take neighbors
           for (dx = 0; dx < 2 && dx+x < sx; dx++) {
             for (dy = 0; dy < 2 && dy+y < sy; dy++) {
@@ -101,56 +123,98 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
                 if (dx+dy+dz > 0) {
                   if(use8Connected || dx+dy == 0|| dx+dz == 0 || dy+dz == 0) {
                     neighPos = (z+dz)*sxy + (y+dy)*sx + (x+dx);
+                    neighVal = TypeUtil.unsign(seqData[z+dz][(y+dy)*sx + (x+dx)]);
                     
+                    float weight = (float)getEdgeLikelihood(
+                        currVal, 
+                        neighVal, 
+                        dx, dy, dz);
                     graphCut.setEdgeWeight(
                         currPos, 
                         neighPos, 
-                        (float)getEdgeLikelihood(
-                            TypeUtil.unsign(seqData[z][y*sx + x]), 
-                            TypeUtil.unsign(seqData[z+dz][(y+dy)*sx + (x+dx)]), 
-                            dx, dy, dz)
-                        ); // Sets weight on edges in both directions 
+                        weight
+                        ); // Sets weight on edges in both directions
+                    diffN += weight;
+                    if(createProbas) gradientData[y*sx + x] += weight;
                   }
                 }
               }
             }
           }
+          if (diffN+1 > maxDiff) maxDiff = diffN + 1;
+          if(createProbas) gradientData[y*sx + x] /= (use8Connected)? 8.0: 4.0;
         }
       }
+    }
+    if(createProbas) {
+      gradientSequence.dataChanged();
+      gradientSequence.endUpdate();
     }
 
     // 3. Terminal node weights specification
-    Histogram[] seedHistograms = getSeedHistograms();
-    double[] seedSizes = new double[seeds.size()];
-    for (i = 0; i < seedSizes.length; i++) {
-      seedSizes[i] = seeds.get(i).getNumberOfPoints();
-    }
+    //graphCut.maxTerminalWeight = maxDiff;
+    System.out.println(graphCut.maxTerminalWeight);
+    getSeedHistograms();
+    float val, maxVal = 0;
+    if(createProbas) terminalSequence.beginUpdate();
     for (z = 0; z < sz; z++) {
+      float[] terminalData = null;
+      if(createProbas) {
+        terminalSequence.setImage(0, z, new IcyBufferedImage(sx, sy, 1, DataType.FLOAT));
+        terminalData = terminalSequence.getDataXYAsFloat(0, z, 0);
+      }
       for (y = 0; y < sy; y++) {
         for (x = 0; x < sx; x++) {
           currPos = z*sxy + y*sx + x;
-
-          probaSrc = -Math.log((double)(seedHistograms[0].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[0]));
-          probaSrc = (probaSrc > graphCut.maxTerminalWeight)? graphCut.maxTerminalWeight: probaSrc;
+          
+          probaSrc = new Double(-Math.log(getProba(0, TypeUtil.unsign(seqData[z][y*sx + x])))).floatValue();
+          //probaSrc = (lambda*probaSrc > multSeeds)? multSeeds: lambda*probaSrc;
           //          System.out.print("proba " + probaSrc);
-          probaSnk = -Math.log((double)(seedHistograms[1].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[1]));
-          probaSnk = (probaSnk > graphCut.maxTerminalWeight)? graphCut.maxTerminalWeight: probaSnk;
+          probaSnk = new Double(-Math.log(getProba(1, TypeUtil.unsign(seqData[z][y*sx + x])))).floatValue();
+//          probaSnk = -Math.log((double)(seedHistograms[1].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[1]));
+          //probaSnk = (lambda*probaSnk > multSeeds)? multSeeds: lambda*probaSnk;
           //          System.out.println(" " + probaSnk);
           //          probaSnk = -Math.log(1.0 - (seedHistograms[0].getBin(TypeUtil.unsign(seqData[z][y*sx + x])).getCount() / (double)seedSizes[0]));
-          graphCut.setTerminalWeights(currPos, (float)(lambda*probaSrc), (float)(lambda*probaSnk), false);
+          val = graphCut.setTerminalWeights(currPos, probaSrc, probaSnk, lambda, false);
+          maxVal = Math.max(maxVal, Math.abs(val));
+          if(createProbas) terminalData[y*sx + x] = val;
         }
       }
     }
+    
+    maxVal += 1;
+    float[][] terminalData = null;
+    if(createProbas) terminalData = terminalSequence.getDataXYZAsFloat(0, 0);
     SequenceDataIterator sDI;
     for (i = 0; i < 2; i++) {
        sDI = new SequenceDataIterator(treatedSequence, seeds.get(i));
       while (!sDI.done()) {
         currPos = sDI.getPositionZ()*sxy + sDI.getPositionY()*sx + sDI.getPositionX();
-        graphCut.setTerminalWeights(currPos, graphCut.maxTerminalWeight*i, graphCut.maxTerminalWeight*(1-i), false);
+        val = graphCut.setTerminalWeights(currPos, (float)(i), (float)(1-i), maxVal, false);
+        if(createProbas) terminalData[sDI.getPositionZ()][sDI.getPositionY()*sx + sDI.getPositionX()] = 
+            val;
         sDI.next();
       }
     }
+    if(createProbas) {
+      terminalSequence.dataChanged();
+      terminalSequence.endUpdate();
+    }
+    
 
+  }
+
+  private double getProba(int seed, int level) {
+    double count = 0;
+    double div = 0;
+    for (int i = -edgeStdDev; i <= edgeStdDev; i++) {
+      if (level + i >= 0 && level + i < seedHistograms[seed].getNbBins()) {
+        count += seedHistograms[seed].getBin(level+i).getCount();
+        div += 1;
+      }
+    }
+    count = count/div;
+    return count/seedSizes[seed];
   }
 
   /**
@@ -190,11 +254,18 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
   }
 
   private Histogram[] getSeedHistograms() throws BadHistogramParameters {
-    Histogram[] hists = new Histogram[seeds.size()];
-    for (int i = 0; i < seeds.size(); i++) {
-      hists[i] = Histogram.compute(treatedSequence, seeds.get(i), true, 64, 0, 255);
+    int i;
+    
+    seedSizes = new double[seeds.size()];
+    for (i = 0; i < seedSizes.length; i++) {
+      seedSizes[i] = seeds.get(i).getNumberOfPoints();
     }
-    return hists;
+    
+    seedHistograms = new Histogram[seeds.size()];
+    for (i = 0; i < seeds.size(); i++) {
+      seedHistograms[i] = Histogram.compute(treatedSequence, seeds.get(i), true, 256, 0, 255);
+    }
+    return seedHistograms;
   }
 
   @Override
@@ -275,6 +346,14 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
 
   public Sequence getTreatedSequence() {
     return this.treatedSequence;
+  }
+  
+  public Sequence getGradientSequence() {
+    return gradientSequence;
+  }
+  
+  public Sequence getTerminalProbabilitiesSequence() {
+    return terminalSequence;
   }
 
 }

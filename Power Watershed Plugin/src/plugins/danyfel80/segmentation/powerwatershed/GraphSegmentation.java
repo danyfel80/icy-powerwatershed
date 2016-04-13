@@ -40,6 +40,7 @@ public class GraphSegmentation extends EzPlug {
   private EzVarBoolean inUse8Connected;
   private EzVarDouble inLambda;
   private EzVarDouble inEdgeVariance;
+  private EzVarBoolean inShowProbas;
   
   // - PowerWatershed Q2
   private EzVarBoolean inUseGrayLevels;
@@ -77,9 +78,12 @@ public class GraphSegmentation extends EzPlug {
     inEdgeVariance.setToolTipText("The variance in pixels' neighborhood");
     inEdgeVariance.setMinValue(0.001);
     inEdgeVariance.setMaxValue(65025.0);
+    inShowProbas = new EzVarBoolean("Show probabilities", false);
+    inShowProbas.setToolTipText("If checked the gradient and terminal probabilities sequences are created.");;
     optional.add(inUse8Connected);
     optional.add(inLambda);
     optional.add(inEdgeVariance);
+    optional.add(inShowProbas);
     
     inUseGrayLevels = new EzVarBoolean("Use gray levels", false);
     inUseGrayLevels.setToolTipText("If true sequence is converted to gray levels.");
@@ -104,6 +108,7 @@ public class GraphSegmentation extends EzPlug {
           inUse8Connected.setVisible(true);
           inLambda.setVisible(true);
           inEdgeVariance.setVisible(true);
+          inShowProbas.setVisible(true);
           break;
         case PowerWatershedQ1:
           break;
@@ -136,6 +141,7 @@ public class GraphSegmentation extends EzPlug {
     addEzComponent(inUse8Connected);
     addEzComponent(inLambda);
     addEzComponent(inEdgeVariance);
+    addEzComponent(inShowProbas);
     addEzComponent(inUseGrayLevels);
     addEzComponent(inUseGeodesicReconstruction);
     
@@ -179,11 +185,16 @@ public class GraphSegmentation extends EzPlug {
         GraphCutSegmentation a3 = new GraphCutSegmentation(
             inSequence.getValue(), 
             inSeedsSequence.getValue().getROIs(ROI.class),
-            inLambda.getValue(),
+            inLambda.getValue().floatValue(),
             inEdgeVariance.getValue(),
-            inUse8Connected.getValue());
+            inUse8Connected.getValue(),
+            inShowProbas.getValue());
         endTime = System.nanoTime();
 //        addSequence(a3.getTreatedSequence());
+        if (inShowProbas.getValue()) {
+          addSequence(a3.getGradientSequence());
+          addSequence(a3.getTerminalProbabilitiesSequence());
+        }
         algo = a3;
 //        return;
         break;

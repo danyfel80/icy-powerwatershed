@@ -33,7 +33,7 @@ public class GraphCutMethod {
   // counter for iterations of main loop
   private int time;
 
-  public int maxTerminalWeight = 50;
+  public float maxTerminalWeight = 50;
   
   /**
    * Initialises the graph cut implementation and allocates the memory needed
@@ -62,10 +62,12 @@ public class GraphCutMethod {
    * @param source The affinity of this node to the foreground (i.e., source)
    * @param sink   The affinity of this node to the background (i.e., sink)
    */
-  public void setTerminalWeights(int node, float source, float sink, boolean update) {
+  public float setTerminalWeights(int node, float source, float sink, float lambda, boolean update) {
     
-    source = (source > maxTerminalWeight)? maxTerminalWeight: source;
-    sink = (sink > maxTerminalWeight)? maxTerminalWeight: sink;
+    source = (source > maxTerminalWeight)? lambda*maxTerminalWeight: lambda*source;
+    sink = (sink > maxTerminalWeight)? lambda*maxTerminalWeight: lambda*sink;
+    
+    
     
     if(update) {
       float delta = graph.getResidualNodeCapacity(node);
@@ -79,7 +81,7 @@ public class GraphCutMethod {
     
     totalFlow += (source < sink) ? source : sink;
     graph.setResidualNodeCapacity(node, source - sink);
-  
+    return source-sink;
   }
 
   /**
