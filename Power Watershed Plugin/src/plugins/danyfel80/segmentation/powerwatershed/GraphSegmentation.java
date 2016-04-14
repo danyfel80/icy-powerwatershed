@@ -32,7 +32,9 @@ public class GraphSegmentation extends EzPlug {
 
   // General input
   private EzVarSequence inSequence;
+  private Sequence inSeq;
   private EzVarSequence inSeedsSequence;
+  private Sequence inSeeds;
   private EzVarEnum<SegmentationType> inSegmentationType;
   
   // Specific input
@@ -55,6 +57,15 @@ public class GraphSegmentation extends EzPlug {
     // Input instantiation and setup
     inSequence = new EzVarSequence("Sequence");
     inSequence.setToolTipText("The sequence to be segmented.");
+    inSequence.addVarChangeListener(new EzVarListener<Sequence>() {
+      
+      @Override
+      public void variableChanged(EzVar<Sequence> source, Sequence newValue) {
+        if(!inSeedsSequence.isEnabled()) {
+          inSeedsSequence.setValue(inSequence.getValue());
+        }
+      }
+    });
 
     inSeedsSequence = new EzVarSequence("Seeds");
     inSeedsSequence.setOptional(true);
@@ -157,9 +168,11 @@ public class GraphSegmentation extends EzPlug {
     // Get the used algorithm
     SegmentationType algoType = inSegmentationType.getValue();
     SegmentationAlgorithm algo = null;
+    this.inSeq = inSequence.getValue();
+    this.inSeeds = inSeedsSequence.getValue();
     
     if (!inSeedsSequence.isEnabled()) {
-      inSeedsSequence.setValue(inSequence.getValue());
+      inSeeds = inSeq;
     }
     
     // Input validation
@@ -257,7 +270,7 @@ public class GraphSegmentation extends EzPlug {
    * @return 0 if input data is correct, else an integer different than 0.
    */
   private int validateInput(SegmentationType algoType) {
-    if (inSequence.getValue() == null) {
+    if (inSeq == null) {
       MessageDialog.showDialog("Error", 
           "Please select a sequence before starting the algorithm", 
           MessageDialog.ERROR_MESSAGE);
@@ -265,20 +278,20 @@ public class GraphSegmentation extends EzPlug {
     }
 
     
-    if (inSeedsSequence.getValue() == null) {
+    if (inSeeds == null) {
       MessageDialog.showDialog("Error", 
           "Please select a seed sequence before starting the algorithm", 
           MessageDialog.ERROR_MESSAGE);
       return 2;
     } else {
-      if (inSeedsSequence.getValue().getROIs().isEmpty()) {
+      if (inSeeds.getROIs().isEmpty()) {
         MessageDialog.showDialog("Error", 
             "Please select a sequence with ROI's specifying the seeds " +
                 "before starting the algorithm", 
                 MessageDialog.ERROR_MESSAGE);
         return 3;
       } else {
-        List<ROI> rois = inSeedsSequence.getValue().getROIs(ROI.class);
+        List<ROI> rois = inSeeds.getROIs(ROI.class);
         
         if (algoType.equals(SegmentationType.GraphCuts) && rois.size() != 2) {
           MessageDialog.showDialog("Error", 

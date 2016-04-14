@@ -45,6 +45,7 @@ public class GraphCutMethod {
    *                 direction) count as one edge.
    */
   public GraphCutMethod(int numNodes, int numEdges) {
+    System.out.println("Num nodes = " + numNodes + ", Num edges = " + (2*numEdges));
     graph            = new GraphGC(numNodes, numEdges);
     edgeNum          = 0;
     totalFlow        = 0;

@@ -23,17 +23,17 @@ import plugins.ylemontag.histogram.Histogram;
 /**
  * @author Daniel Felipe Gonzalez Obando
  */
-// TODO fix for color images
 public class GraphCutSegmentation extends SegmentationAlgorithm{
 
   private Sequence inSequence;
   private Sequence treatedSequence;
+  private Sequence graySequence;
   private List<ROI> seeds;
   private float lambda;
   private boolean use8Connected;
   private boolean createProbas;
 
-  private int sx, sy, sz;
+  private int sx, sy, sz, sc;
   private int numE, numN;
   private GraphCutMethod graphCut;
 
@@ -64,16 +64,19 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     this.edgeVariance = edgeVariance;
     this.edgeStdDev = (int) Math.ceil(Math.sqrt(edgeVariance));
     this.createProbas = createProbas;
-    /*if (inSequence.getDataType_() == DataType.BYTE) {
+    
+    if (inSequence.getDataType_() == DataType.BYTE) {
       treatedSequence = inSequence;
     } else {
       treatedSequence = SequenceUtil.convertToType(inSequence, DataType.BYTE, true);
-    }*/
-    treatedSequence = SequenceUtil.toGray(inSequence);
+    }
     treatedSequence.setName(inSequence.getName());
+    graySequence = SequenceUtil.toGray(inSequence);
+    
     sx = treatedSequence.getSizeX();
     sy = treatedSequence.getSizeY();
     sz = treatedSequence.getSizeZ();
+    sc = treatedSequence.getSizeC();
 
     prepareGraph(seeds);
     System.out.println("Graph Cut Segmentation(lambda=" + lambda + ", variance=" + edgeVariance + ", " + (use8Connected?"8": "4") + "-connect)");
@@ -82,7 +85,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters{
 
-    int x, y, z, dx, dy, dz, currPos, neighPos, i, currVal, neighVal;
+    int x, y, z, c, dx, dy, dz, currPos, neighPos, i;
+    int[] currVals = new int[sc], neighVals = new int[sc];
     float probaSrc, probaSnk;
     
     if (createProbas) {
@@ -101,7 +105,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     // 2. Neighbor node weights specification
     float maxDiff = 0, diffN;
     if(createProbas) gradientSequence.beginUpdate();
-    byte[][] seqData = treatedSequence.getDataXYZAsByte(0, 0);
+    byte[][][] seqData = treatedSequence.getDataXYCZAsByte(0);
     //edgeVariance = computeVariance();
     // - For each pixel
     for (z = 0; z < sz; z++) {
@@ -113,7 +117,9 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
       for (y = 0; y < sy; y++) {
         for (x = 0; x < sx; x++) {
           currPos = z*sxy + y*sx + x;
-          currVal = TypeUtil.unsign(seqData[z][y*sx + x]);
+          for (c = 0; c < sc; c++) {
+            currVals[c] = TypeUtil.unsign(seqData[z][c][y*sx + x]);
+          }
           diffN = 0;
           
           // - Take neighbors
@@ -123,11 +129,13 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
                 if (dx+dy+dz > 0) {
                   if(use8Connected || dx+dy == 0|| dx+dz == 0 || dy+dz == 0) {
                     neighPos = (z+dz)*sxy + (y+dy)*sx + (x+dx);
-                    neighVal = TypeUtil.unsign(seqData[z+dz][(y+dy)*sx + (x+dx)]);
+                    for (c = 0; c < sc; c++) {
+                      neighVals[c] = TypeUtil.unsign(seqData[z+dz][c][(y+dy)*sx + (x+dx)]);
+                    }
                     
                     float weight = (float)getEdgeLikelihood(
-                        currVal, 
-                        neighVal, 
+                        currVals, 
+                        neighVals, 
                         dx, dy, dz);
                     graphCut.setEdgeWeight(
                         currPos, 
@@ -152,8 +160,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     }
 
     // 3. Terminal node weights specification
-    //graphCut.maxTerminalWeight = maxDiff;
-    System.out.println(graphCut.maxTerminalWeight);
+    byte[][] grayData = graySequence.getDataXYZAsByte(0, 0);
     getSeedHistograms();
     float val, maxVal = 0;
     if(createProbas) terminalSequence.beginUpdate();
@@ -167,14 +174,10 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
         for (x = 0; x < sx; x++) {
           currPos = z*sxy + y*sx + x;
           
-          probaSrc = new Double(-Math.log(getProba(0, TypeUtil.unsign(seqData[z][y*sx + x])))).floatValue();
-          //probaSrc = (lambda*probaSrc > multSeeds)? multSeeds: lambda*probaSrc;
-          //          System.out.print("proba " + probaSrc);
-          probaSnk = new Double(-Math.log(getProba(1, TypeUtil.unsign(seqData[z][y*sx + x])))).floatValue();
-//          probaSnk = -Math.log((double)(seedHistograms[1].getBin(TypeUtil.unsign(seqData[z][y*sx + x])/4).getCount()) / (double)(seedSizes[1]));
-          //probaSnk = (lambda*probaSnk > multSeeds)? multSeeds: lambda*probaSnk;
-          //          System.out.println(" " + probaSnk);
-          //          probaSnk = -Math.log(1.0 - (seedHistograms[0].getBin(TypeUtil.unsign(seqData[z][y*sx + x])).getCount() / (double)seedSizes[0]));
+          probaSrc = new Double(-Math.log(getProba(0, TypeUtil.unsign(grayData[z][y*sx + x])))).floatValue();
+          //          System.out.print("proba (" + probaSrc);
+          probaSnk = new Double(-Math.log(getProba(1, TypeUtil.unsign(grayData[z][y*sx + x])))).floatValue();
+          //          System.out.println(", " + probaSnk+")");
           val = graphCut.setTerminalWeights(currPos, probaSrc, probaSnk, lambda, false);
           maxVal = Math.max(maxVal, Math.abs(val));
           if(createProbas) terminalData[y*sx + x] = val;
@@ -247,8 +250,11 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     return variance;
   }
 
-  private double getEdgeLikelihood(int value1, int value2, int dx, int dy, int dz) {
-    int diff = value2 - value1;
+  private double getEdgeLikelihood(int[] values1, int[] values2, int dx, int dy, int dz) {
+    int diff = 0;
+    for (int c = 0; c < sc; c++) {
+      diff = Math.max(diff, values2[c] - values1[c]);
+    }
     return Math.exp(-(diff*diff)/(2*edgeVariance))/
         Math.sqrt(dx*dx + dy*dy + dz*dz);
   }
@@ -263,7 +269,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm{
     
     seedHistograms = new Histogram[seeds.size()];
     for (i = 0; i < seeds.size(); i++) {
-      seedHistograms[i] = Histogram.compute(treatedSequence, seeds.get(i), true, 256, 0, 255);
+      seedHistograms[i] = Histogram.compute(graySequence, seeds.get(i), true, 256, 0, 255);
     }
     return seedHistograms;
   }
