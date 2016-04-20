@@ -90,7 +90,6 @@ public class GraphSegmentation extends EzPlug {
     inEdgeVariance.setMinValue(0.001);
     inEdgeVariance.setMaxValue(65025.0);
     inEdgeVariance.setOptional(true);
-    inEdgeVariance.setEnabled(false);
     inShowProbas = new EzVarBoolean("Show probabilities", false);
     inShowProbas.setToolTipText("If checked the gradient and terminal probabilities sequences are created.");;
     optional.add(inUse8Connected);
@@ -154,6 +153,7 @@ public class GraphSegmentation extends EzPlug {
     addEzComponent(inUse8Connected);
     addEzComponent(inLambda);
     addEzComponent(inEdgeVariance);
+    inEdgeVariance.setEnabled(false);
     addEzComponent(inShowProbas);
     addEzComponent(inUseGrayLevels);
     addEzComponent(inUseGeodesicReconstruction);
