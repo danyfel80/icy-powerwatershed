@@ -79,7 +79,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 	sz = treatedSequence.getSizeZ();
 	sc = treatedSequence.getSizeC();
 
-	this.edgeVariance = computeVariance();
+	this.edgeVariance = (edgeVariance != -1)? edgeVariance: computeVariance();
 	System.out.println("Graph Cut Segmentation(lambda=" + lambda + ", variance=" + this.edgeVariance + ", "
 	    + (use8Connected ? "8" : "4") + "-connect)");
 	prepareGraph(seeds);

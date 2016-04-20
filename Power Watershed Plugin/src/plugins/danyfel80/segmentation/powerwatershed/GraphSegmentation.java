@@ -89,6 +89,8 @@ public class GraphSegmentation extends EzPlug {
     inEdgeVariance.setToolTipText("The variance in pixels' neighborhood");
     inEdgeVariance.setMinValue(0.001);
     inEdgeVariance.setMaxValue(65025.0);
+    inEdgeVariance.setOptional(true);
+    inEdgeVariance.setEnabled(false);
     inShowProbas = new EzVarBoolean("Show probabilities", false);
     inShowProbas.setToolTipText("If checked the gradient and terminal probabilities sequences are created.");;
     optional.add(inUse8Connected);
@@ -199,7 +201,7 @@ public class GraphSegmentation extends EzPlug {
             inSequence.getValue(), 
             inSeedsSequence.getValue().getROIs(ROI.class),
             inLambda.getValue().floatValue(),
-            inEdgeVariance.getValue(),
+            (inEdgeVariance.isEnabled())? inEdgeVariance.getValue(): -1,
             inUse8Connected.getValue(),
             inShowProbas.getValue());
         endTime = System.nanoTime();
