@@ -1,4 +1,4 @@
-package plugins.danyfel80.segmentation.powerwatershed;
+package plugins.danyfel80.segmentation.graphs;
 
 import java.util.ArrayList;
 import java.util.List;
