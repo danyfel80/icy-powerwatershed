@@ -2,12 +2,13 @@ package algorithms.danyfel80.segmentation.graphcut;
 
 /**
  * Class wrapping some basic structures that are used to represent a graph.
+ * 
  * @author Daniel Felipe Gonzalez Obando
  */
 public class GraphGC {
-  
-  private int numNodes;
-  private int numEdges;
+
+  private int             numNodes;
+  private int             numEdges;
 
   // special index assigment
   public final static int NONE     = -1;
@@ -19,49 +20,48 @@ public class GraphGC {
   /////////////////////////
 
   // first outgoing edge
-  private int[] firstOutgoings;
+  private int[]           firstOutgoings;
 
   // parent (in the tree structure)
-  private int[] parents;
+  private int[]           parents;
 
   // next active node
-  private int[] nextNodes;
-
+  private int[]           nextNodes;
 
   // timestamp indicating when distance was computed
-  private int[] timestamps;
+  private int[]           timestamps;
 
   // distance to the terminal
-  private int[] distances;
+  private int[]           distances;
 
   // indicates whether this node belongs to the sink or the source tree
-  private boolean[] inSink;
+  private boolean[]       inSink;
 
   // indicates whether this node was changed
-  private boolean[] marked;
+  private boolean[]       marked;
 
   // indicates whether this node is in the changed list
-  private boolean[] inChangedList;
+  private boolean[]       inChangedList;
 
   // the residual capacity of this node to the sink (<0) or from the source
   // (>0)
-  private float[] residualNodeCapacities;
+  private float[]         residualNodeCapacities;
 
   /////////////////////////
   // edge representation //
   /////////////////////////
 
   // node the edge points to
-  private int[] heads;
+  private int[]           heads;
 
   // next edge with the same originating node
-  private int[] nextEdges;
+  private int[]           nextEdges;
 
   // reverse arc
-  private int[] sisters;
+  private int[]           sisters;
 
   // residual capacity of this edge
-  private float[] residualEdgeCapacities;
+  private float[]         residualEdgeCapacities;
 
   public GraphGC(int numNodes, int numEdges) {
 
@@ -69,39 +69,39 @@ public class GraphGC {
     this.numEdges = numEdges;
 
     // allocate node data
-    firstOutgoings         = new int[numNodes];
-    parents                = new int[numNodes];
-    nextNodes              = new int[numNodes];
-    timestamps             = new int[numNodes];
-    distances              = new int[numNodes];
-    inSink                 = new boolean[numNodes];
-    marked                 = new boolean[numNodes];
-    inChangedList          = new boolean[numNodes];
-    residualNodeCapacities = new float[2*numEdges];
+    firstOutgoings = new int[numNodes];
+    parents = new int[numNodes];
+    nextNodes = new int[numNodes];
+    timestamps = new int[numNodes];
+    distances = new int[numNodes];
+    inSink = new boolean[numNodes];
+    marked = new boolean[numNodes];
+    inChangedList = new boolean[numNodes];
+    residualNodeCapacities = new float[2 * numEdges];
 
     // allocate edge data
-    heads                  = new int[2*numEdges];
-    nextEdges              = new int[2*numEdges];
-    sisters                = new int[2*numEdges];
-    residualEdgeCapacities = new float[2*numEdges];
+    heads = new int[2 * numEdges];
+    nextEdges = new int[2 * numEdges];
+    sisters = new int[2 * numEdges];
+    residualEdgeCapacities = new float[2 * numEdges];
 
     // initialise node data
     for (int i = 0; i < numNodes; i++) {
-      firstOutgoings[i]         = NONE;
-      parents[i]                = NONE;
-      nextNodes[i]              = NONE;
-      timestamps[i]             = 0;
-      distances[i]              = 0;
-      inSink[i]                 = false;
-      marked[i]                 = false;
+      firstOutgoings[i] = NONE;
+      parents[i] = NONE;
+      nextNodes[i] = NONE;
+      timestamps[i] = 0;
+      distances[i] = 0;
+      inSink[i] = false;
+      marked[i] = false;
       residualNodeCapacities[i] = 0;
     }
 
     // initialise edge data
-    for (int i = 0; i < 2*numEdges; i++) {
-      heads[i]                  = NONE;
-      nextEdges[i]              = NONE;
-      sisters[i]                = NONE;
+    for (int i = 0; i < 2 * numEdges; i++) {
+      heads[i] = NONE;
+      nextEdges[i] = NONE;
+      sisters[i] = NONE;
       residualEdgeCapacities[i] = 0;
     }
   }
@@ -217,8 +217,5 @@ public class GraphGC {
   public final void isMarked(int node, boolean is) {
     marked[node] = is;
   }
-
-
-
 
 }

@@ -70,8 +70,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     if (inSequence.getDataType_() == DataType.UBYTE) {
       treatedSequence = inSequence;
     } else {
-      treatedSequence = SequenceUtil.convertToType(inSequence, DataType.UBYTE,
-          true);
+      treatedSequence =
+          SequenceUtil.convertToType(inSequence, DataType.UBYTE, true);
     }
     treatedSequence.setName(inSequence.getName());
     graySequence = SequenceUtil.toGray(inSequence);
@@ -98,8 +98,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
     if (createProbas) {
       gradientSequence = new Sequence(inSequence.getName() + "Gradient");
-      terminalSequence = new Sequence(
-          inSequence.getName() + "TerminalProbabilities");
+      terminalSequence =
+          new Sequence(inSequence.getName() + "TerminalProbabilities");
     }
     // 1. Graph Instantiation
     int sxy = sx * sy;
@@ -158,10 +158,10 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       neighPos = z * sxy + y * sx + (x + dx);
                       neighPos1 = z * sxy + (y + dy) * sx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] = TypeUtil
-                            .unsign(seqData[z][c][y * sx + (x + dx)]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z][c][(y + dy) * sx + x]);
+                        neighVals[c] =
+                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -176,10 +176,10 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       neighPos = z * sxy + y * sx + (x + dx);
                       neighPos1 = (z + dz) * sxy + y * sx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] = TypeUtil
-                            .unsign(seqData[z][c][y * sx + (x + dx)]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z + dz][c][y * sx + x]);
+                        neighVals[c] =
+                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -194,10 +194,10 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       neighPos = z * sxy + (y + dy) * sx + x;
                       neighPos1 = (z + dz) * sxy + y * sx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] = TypeUtil
-                            .unsign(seqData[z][c][(y + dy) * sx + x]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z + dz][c][y * sx + x]);
+                        neighVals[c] =
+                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -216,8 +216,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
                             .unsign(seqData[z][c][(y + dy) * sx + (x + dx)]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z + dz][c][y * sx + x]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -234,8 +234,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
                             .unsign(seqData[z + dx][c][y * sx + (x + dx)]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z][c][(y + dy) * sx + x]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -252,8 +252,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
                             .unsign(seqData[z + dz][c][(y + dy) * sx + x]);
-                        neighVals1[c] = TypeUtil
-                            .unsign(seqData[z][c][y * sx + (x + dx)]);
+                        neighVals1[c] =
+                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -406,8 +406,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
     seedHistograms = new Histogram[seeds.size()];
     for (i = 0; i < seeds.size(); i++) {
-      seedHistograms[i] = Histogram.compute(graySequence, seeds.get(i), true,
-          256, 0, 255);
+      seedHistograms[i] =
+          Histogram.compute(graySequence, seeds.get(i), true, 256, 0, 255);
     }
     return seedHistograms;
   }
@@ -452,7 +452,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
         // set value from ROI(s)
         int val = 0;
-        for (ROI roi : resultROIs) {
+        for (ROI roi: resultROIs) {
           if (!roi.getBounds5D().isEmpty())
             DataIteratorUtil
                 .set(new SequenceDataIterator(resultSegmentation, roi), val);

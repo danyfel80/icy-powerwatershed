@@ -23,54 +23,54 @@ public class GraphUtils {
    * @return Index of the j_th edge neighbor of the node "i". -1 if the neighbor is outside the image
    */
   public static int getNeighborNodeEdge(int i, int j, int sx, int sy, int sz) {
-    int sxy = sx*sy;
-    int z = i/sxy;
-    int zp = i%sxy;
+    int sxy = sx * sy;
+    int z = i / sxy;
+    int zp = i % sxy;
 
-    int V = (sy - 1)*sx;
-    int H = (sx - 1)*sy;
+    int V = (sy - 1) * sx;
+    int H = (sx - 1) * sy;
 
     switch (j) {
     case 1:
-      if (zp%sx >= sx - 1) {
+      if (zp % sx >= sx - 1) {
         return -1;
       } else {
-        return (zp + V) - (zp/sx) + z*(V + H + sxy);
+        return (zp + V) - (zp / sx) + z * (V + H + sxy);
       }
     case 2:
-      if (zp/sx >= sy - 1) {
+      if (zp / sx >= sy - 1) {
         return -1;
       } else {
-        return zp + z*(V + H + sxy);
+        return zp + z * (V + H + sxy);
       }
     case 3:
-      if (zp%sx == 0) {
+      if (zp % sx == 0) {
         return -1;
       } else {
-        return (zp + V) - (zp/sx) - 1 + z*(V + H + sxy);
+        return (zp + V) - (zp / sx) - 1 + z * (V + H + sxy);
       }
     case 4:
-      if (zp/sx == 0) {
+      if (zp / sx == 0) {
         return -1;
       } else {
-        return zp - sx + z*(V + H + sxy);
+        return zp - sx + z * (V + H + sxy);
       }
     case 5:
       if (z == 0) {
         return -1;
       } else {
-        return z*(V + H) + zp + (z - 1) * sxy;
+        return z * (V + H) + zp + (z - 1) * sxy;
       }
     case 6:
       if (z >= sz - 1) {
         return -1;
       } else {
-        return (z + 1)*(V + H) + zp + z*sxy;
+        return (z + 1) * (V + H) + zp + z * sxy;
       }
     case -1:
       return i + sxy;
     case 0:
-      return i + sxy*2;
+      return i + sxy * 2;
     }
     return -1; // should never happen
   }
@@ -101,34 +101,35 @@ public class GraphUtils {
    * @return The index of the k_th neighbor 
    */
   public static int getNeighborEdge(int i, int k, int sx, int sy, int sz) {
-    int V = (sy - 1)*sx; // nb vertical edges
-    
-    if (i >= V) { //horizontal
-      switch(k) {
+    int V = (sy - 1) * sx; // nb vertical edges
+
+    if (i >= V) { // horizontal
+      switch (k) {
       case 2:
         if ((i - V) < sx - 1) {
           return -1;
         } else {
-          return ((i - V)/(sx - 1) - 1)*sx + ((i - V)%(sx - 1));
+          return ((i - V) / (sx - 1) - 1) * sx + ((i - V) % (sx - 1));
         }
       case 3:
-        if ((i - V)%(sx - 1) == 0) {
+        if ((i - V) % (sx - 1) == 0) {
           return -1;
         } else {
           return i - 1;
         }
       case 4:
-        if (i > (sx - 1)*sy + V - sx){
+        if (i > (sx - 1) * sy + V - sx) {
           return -1;
         } else {
-          return ((i - V)/(sx - 1) - 1)*sx + ((i - V)%(sx - 1)) + sx;
+          return ((i - V) / (sx - 1) - 1) * sx + ((i - V) % (sx - 1)) + sx;
         }
       case 5:
-        if (i > (sx - 1)*sy + V - sx) {
+        if (i > (sx - 1) * sy + V - sx) {
           return -1;
-        } else return ((i - V)/(sx - 1) - 1)*sx + ((i - V)%(sx - 1)) + sx +1;
+        } else
+          return ((i - V) / (sx - 1) - 1) * sx + ((i - V) % (sx - 1)) + sx + 1;
       case 6:
-        if ((i - V)%(sx - 1) == sx - 2){
+        if ((i - V) % (sx - 1) == sx - 2) {
           return -1;
         } else {
           return i + 1;
@@ -137,16 +138,16 @@ public class GraphUtils {
         if (i - V < sx - 1) {
           return -1;
         } else {
-          return ((i - V)/(sx - 1) - 1)*sx + ((i - V)%(sx - 1)) + 1;
+          return ((i - V) / (sx - 1) - 1) * sx + ((i - V) % (sx - 1)) + 1;
         }
       }
-    } else { //vertical
-      switch(k) {
+    } else { // vertical
+      switch (k) {
       case 6:
-        if (i%sx == sx - 1){
+        if (i % sx == sx - 1) {
           return -1;
         } else {
-          return (i + V) - (i/sx);
+          return (i + V) - (i / sx);
         }
       case 1:
         if (i < sx) {
@@ -155,16 +156,16 @@ public class GraphUtils {
           return i - sx;
         }
       case 2:
-        if (i%sx == 0) {
+        if (i % sx == 0) {
           return -1;
         } else {
-          return (i + V) - (i/sx) - 1;
+          return (i + V) - (i / sx) - 1;
         }
       case 3:
-        if (i%sx == 0) {
+        if (i % sx == 0) {
           return -1;
         } else {
-          return (i + V) - (i/sx) - 1 + sx - 1;
+          return (i + V) - (i / sx) - 1 + sx - 1;
         }
       case 4:
         if (i >= V - sx) {
@@ -173,14 +174,14 @@ public class GraphUtils {
           return i + sx;
         }
       case 5:
-        if (i%sx == sx - 1) {
+        if (i % sx == sx - 1) {
           return -1;
         } else {
-          return (i + V) - (i/sx) + sx - 1;
+          return (i + V) - (i / sx) + sx - 1;
         }
       }
     }
-    return -1; //never happens 
+    return -1; // never happens
   }
   
   /**
@@ -219,119 +220,112 @@ public class GraphUtils {
    * @param sz Size of sequence in Z.
    * @return The index of the k_th neighbor.
    */
-  public static int getNeighborEdge3D(int node1, int node2, int i, int k, int sx, int sy, int sz) {
+  public static int getNeighborEdge3D(int node1, int node2, int i, int k,
+      int sx, int sy, int sz) {
     if (sz == 1) {
-      return getNeighborEdge(i, k, sx, sy, sz); 
+      return getNeighborEdge(i, k, sx, sy, sz);
     }
-    
-    int index= -1;
-    int sxy = sx*sy;
-    int V = (sy - 1)*sx;
-    int H = (sx - 1)*sy;
-    if(k <= 6) {
-      int zp = node1%(sxy); 
-      int z = node1/(sxy);   
-      switch(k) {
+
+    int index = -1;
+    int sxy = sx * sy;
+    int V = (sy - 1) * sx;
+    int H = (sx - 1) * sy;
+    if (k <= 6) {
+      int zp = node1 % (sxy);
+      int z = node1 / (sxy);
+      switch (k) {
       case 1:
-        if (zp%sx >= sx - 1) {
+        if (zp % sx >= sx - 1) {
           return -1;
         } else {
-          index = (zp + V) - (zp/sx) + z*(V + H + sxy);
+          index = (zp + V) - (zp / sx) + z * (V + H + sxy);
         }
         break;
       case 2:
-        if (zp/sx >= sy - 1) {
+        if (zp / sx >= sy - 1) {
           return -1;
-        }
-        else {
-          index = zp + z*(V + H + sxy);
+        } else {
+          index = zp + z * (V + H + sxy);
         }
         break;
       case 3:
-        if (zp%sx == 0) {
+        if (zp % sx == 0) {
           return -1;
         } else {
-          index = (zp + V) - (zp/sx) - 1 + z*(V + H + sxy);
+          index = (zp + V) - (zp / sx) - 1 + z * (V + H + sxy);
         }
         break;
       case 4:
-        if (zp/sx == 0) {
+        if (zp / sx == 0) {
           return -1;
-        }
-        else {
-          index = zp - sx + z*(V + H + sxy);
+        } else {
+          index = zp - sx + z * (V + H + sxy);
         }
         break;
       case 5:
         if (z == 0) {
           return -1;
         } else {
-          index = z*(V + H) + zp + (z - 1)*sxy;
+          index = z * (V + H) + zp + (z - 1) * sxy;
         }
         break;
       case 6:
         if (z >= sz - 1) {
           return -1;
         } else {
-          index = (z + 1)*(V + H) + zp + z*sxy;
+          index = (z + 1) * (V + H) + zp + z * sxy;
         }
         break;
       }
-    }
-    else {
-      int zp = node2%(sxy); 
-      int z = node2/(sxy);   
-      switch(k - 6) {
+    } else {
+      int zp = node2 % (sxy);
+      int z = node2 / (sxy);
+      switch (k - 6) {
       case 1:
-        if (zp%sx >= sx - 1) {
+        if (zp % sx >= sx - 1) {
           return -1;
         } else {
-          index = (zp + V) - (zp / sx) + z*(V + H + sxy);
+          index = (zp + V) - (zp / sx) + z * (V + H + sxy);
         }
         break;
       case 2:
-        if (zp/sx >= sy - 1){
+        if (zp / sx >= sy - 1) {
           return -1;
-        }
-        else {
-          index = zp + z*(V + H + sxy);
+        } else {
+          index = zp + z * (V + H + sxy);
         }
         break;
       case 3:
-        if (zp%sx == 0) {
+        if (zp % sx == 0) {
           return -1;
-        }
-        else {
-          index = (zp + V) - (zp/sx) - 1 + z*(V + H + sxy);
+        } else {
+          index = (zp + V) - (zp / sx) - 1 + z * (V + H + sxy);
         }
         break;
       case 4:
-        if (zp/sx == 0) {
+        if (zp / sx == 0) {
           return -1;
-        }
-        else {
-          index = zp - sx + z*(V + H + sxy);
+        } else {
+          index = zp - sx + z * (V + H + sxy);
         }
         break;
       case 5:
         if (z == 0) {
           return -1;
-        }
-        else {
-          index = z*(V + H) + zp + (z - 1)*sxy;
+        } else {
+          index = z * (V + H) + zp + (z - 1) * sxy;
         }
         break;
       case 6:
         if (z >= sz - 1) {
           return -1;
-        }
-        else {
-          index = (z + 1)*(V + H) + zp + z*sxy;
+        } else {
+          index = (z + 1) * (V + H) + zp + z * sxy;
         }
         break;
       }
     }
-    
+
     if (index == i) {
       return -1;
     }
@@ -341,19 +335,25 @@ public class GraphUtils {
   
   /**
    * Sort the seedsFnSize values of array seedsFunction in increasing order
-   * @param seedsFunction Array to sort
-   * @param sortedEdges Array such as I[i]=i
-   * @param seedsFnSize Number of elements to sort
-   * @param numBins Number of buckets
+   * 
+   * @param seedsFunction
+   *          Array to sort
+   * @param sortedEdges
+   *          Array such as I[i]=i
+   * @param seedsFnSize
+   *          Number of elements to sort
+   * @param numBins
+   *          Number of buckets
    */
-  public static void binSortInc(int[] seedsFunction, int[] sortedEdges, int seedsFnSize, int numBins) {
+  public static void binSortInc(int[] seedsFunction, int[] sortedEdges,
+      int seedsFnSize, int numBins) {
     int i, j;
     int[] H = new int[numBins];
-    for(i = 0; i < seedsFnSize; i++) {
+    for (i = 0; i < seedsFnSize; i++) {
       H[seedsFunction[i]]++;
     }
     @SuppressWarnings("unchecked")
-    Deque<Integer>[] buckets =  new Deque[numBins];
+    Deque<Integer>[] buckets = new Deque[numBins];
     for (i = 0; i < numBins; i++) {
       buckets[i] = new ArrayDeque<Integer>(H[i]);
     }
@@ -364,7 +364,7 @@ public class GraphUtils {
 
     j = 0;
     for (i = 0; i < numBins; i--) {
-      while(!buckets[i].isEmpty()) {
+      while (!buckets[i].isEmpty()) {
         sortedEdges[j] = buckets[i].removeFirst();
         seedsFunction[j] = i;
         j++;
@@ -374,19 +374,25 @@ public class GraphUtils {
   
   /**
    * Sort the seedsFnSize values of array seedsFunction in decreasing order
-   * @param seedsFunction Array to sort
-   * @param sortedEdges Array such as I[i]=i
-   * @param seedsFnSize Number of elements to sort
-   * @param numBins Number of buckets
+   * 
+   * @param seedsFunction
+   *          Array to sort
+   * @param sortedEdges
+   *          Array such as I[i]=i
+   * @param seedsFnSize
+   *          Number of elements to sort
+   * @param numBins
+   *          Number of buckets
    */
-  public static void binSortDec(int[] seedsFunction, int[] sortedEdges, int seedsFnSize, int numBins) {
+  public static void binSortDec(int[] seedsFunction, int[] sortedEdges,
+      int seedsFnSize, int numBins) {
     int i, j;
     int[] H = new int[numBins];
-    for(i = 0; i < seedsFnSize; i++) {
+    for (i = 0; i < seedsFnSize; i++) {
       H[seedsFunction[i]]++;
     }
     @SuppressWarnings("unchecked")
-    Deque<Integer>[] buckets =  new Deque[numBins];
+    Deque<Integer>[] buckets = new Deque[numBins];
     for (i = 0; i < numBins; i++) {
       buckets[i] = new ArrayDeque<Integer>(H[i]);
     }
@@ -397,17 +403,18 @@ public class GraphUtils {
 
     j = 0;
     for (i = numBins - 1; i >= 0; i--) {
-      while(!buckets[i].isEmpty()) {
+      while (!buckets[i].isEmpty()) {
         sortedEdges[j] = buckets[i].removeFirst();
         seedsFunction[j] = i;
         j++;
       }
     }
   }
-  
+
   /**
-   * Sorts array values in A from index p (inclusive) to index r (inclusive)
-   * in increasing order. 
+   * Sorts array values in A from index p (inclusive) to index r (inclusive) in
+   * increasing order.
+   * 
    * @param A
    * @param I
    * @param p
@@ -418,14 +425,15 @@ public class GraphUtils {
     if (p < r) {
       q = stochasticPartitionInc(A, I, p, r);
       quickStochasticSortInc(A, I, p, q);
-      quickStochasticSortInc(A, I, q+1, r);
+      quickStochasticSortInc(A, I, q + 1, r);
     }
   }
-  
+
   /**
-   * Finds the partition index of A between index p (inclusive) and 
-   * index r (inclusive). First partition where elements <= A[q] and second
-   * with the other elements (q is randomly selected in the range [p, r]).
+   * Finds the partition index of A between index p (inclusive) and index r
+   * (inclusive). First partition where elements <= A[q] and second with the
+   * other elements (q is randomly selected in the range [p, r]).
+   * 
    * @param A
    * @param I
    * @param p
@@ -438,19 +446,18 @@ public class GraphUtils {
     t = A[p];
     A[p] = A[q];
     A[q] = t;
-    
+
     t = I[p];
     I[p] = I[q];
     I[q] = t;
-    
+
     return findPartitionInc(A, I, p, r);
   }
 
   /**
-   * Finds the partition index of the elements in A between p (inclusive) 
-   * and r (inclusive) to split in two groups: those <= A[p] and other 
-   * elements.
-   *  
+   * Finds the partition index of the elements in A between p (inclusive) and r
+   * (inclusive) to split in two groups: those <= A[p] and other elements.
+   * 
    * @param A
    * @param I
    * @param p
@@ -458,39 +465,39 @@ public class GraphUtils {
    * @return
    */
   private static int findPartitionInc(int[] A, int[] I, int p, int r) {
-    
-    int  t;
+
+    int t;
     int x = A[p];
     int i = p - 1;
     int j = r + 1;
-    
+
     while (true) {
       do {
         j--;
       } while (A[j] > x);
-      
+
       do {
         i++;
       } while (A[i] < x);
-      
-      if (i < j) { 
+
+      if (i < j) {
         t = A[i];
         A[i] = A[j];
         A[j] = t;
-        
+
         t = I[i];
         I[i] = I[j];
-        I[j] = t; 
-      }
-      else {
+        I[j] = t;
+      } else {
         return j;
       }
-    }   
+    }
   }
-  
+
   /**
-   * Sorts array values in A from index p (inclusive) to index r (inclusive)
-   * in decreasing order. 
+   * Sorts array values in A from index p (inclusive) to index r (inclusive) in
+   * decreasing order.
+   * 
    * @param A
    * @param I
    * @param p
@@ -501,14 +508,15 @@ public class GraphUtils {
     if (p < r) {
       q = stochasticPartitionDec(A, I, p, r);
       quickStochasticSortDec(A, I, p, q);
-      quickStochasticSortDec(A, I, q+1, r);
+      quickStochasticSortDec(A, I, q + 1, r);
     }
   }
-  
+
   /**
-   * Finds the partition index of A between index p (inclusive) and 
-   * index r (inclusive). First partition where elements <= A[q] and second
-   * with the other elements (q is randomly selected in the range [p, r]).
+   * Finds the partition index of A between index p (inclusive) and index r
+   * (inclusive). First partition where elements <= A[q] and second with the
+   * other elements (q is randomly selected in the range [p, r]).
+   * 
    * @param A
    * @param I
    * @param p
@@ -521,19 +529,18 @@ public class GraphUtils {
     t = A[p];
     A[p] = A[q];
     A[q] = t;
-    
+
     t = I[p];
     I[p] = I[q];
     I[q] = t;
-    
+
     return findPartitionDec(A, I, p, r);
   }
 
   /**
-   * Finds the partition index of the elements in A between p (inclusive) 
-   * and r (inclusive) to split in two groups: those <= A[p] and other 
-   * elements.
-   *  
+   * Finds the partition index of the elements in A between p (inclusive) and r
+   * (inclusive) to split in two groups: those <= A[p] and other elements.
+   * 
    * @param A
    * @param I
    * @param p
@@ -541,38 +548,38 @@ public class GraphUtils {
    * @return
    */
   private static int findPartitionDec(int[] A, int[] I, int p, int r) {
-    
-    int  t;
+
+    int t;
     int x = A[p];
     int i = p - 1;
     int j = r + 1;
-    
+
     while (true) {
       do {
         j--;
       } while (A[j] < x);
-      
+
       do {
         i++;
       } while (A[i] > x);
-      
-      if (i < j) { 
+
+      if (i < j) {
         t = A[i];
         A[i] = A[j];
         A[j] = t;
-        
+
         t = I[i];
         I[i] = I[j];
-        I[j] = t; 
-      }
-      else {
+        I[j] = t;
+      } else {
         return j;
       }
-    }   
+    }
   }
 
   /**
-   * Finds the farthest ancestor node of an specified node. 
+   * Finds the farthest ancestor node of an specified node.
+   * 
    * @param childEdge
    * @param fathers
    * @return the root parent node of the specified child node.
@@ -586,14 +593,18 @@ public class GraphUtils {
 
   /**
    * Link two edges as parent and child edges according to their current ranks.
-   * @param x Edge 1
-   * @param y Edge 2
-   * @param ranks Edges' rank array
-   * @param fathers Edges' father index
+   * 
+   * @param x
+   *          Edge 1
+   * @param y
+   *          Edge 2
+   * @param ranks
+   *          Edges' rank array
+   * @param fathers
+   *          Edges' father index
    * @return The father edge between x and y
    */
-  public static int linkElements(int x, int y, int[] ranks,
-      int[] fathers) {
+  public static int linkElements(int x, int y, int[] ranks, int[] fathers) {
     if (ranks[x] > ranks[y]) {
       int tmp = x;
       x = y;
