@@ -451,12 +451,12 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
               new IcyBufferedImage(sx, sy, 1, DataType.UBYTE));
 
         // set value from ROI(s)
-        int val = 0;
+        byte val = (int)0;
         for (ROI roi: resultROIs) {
           if (!roi.getBounds5D().isEmpty())
             DataIteratorUtil
                 .set(new SequenceDataIterator(resultSegmentation, roi), val);
-          val++;
+          val = (byte)DataType.UBYTE_MAX_VALUE;
         }
 
         // notify data changed
@@ -466,7 +466,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
         resultSegmentation.endUpdate();
       }
       resultSegmentation
-          .setName(inSequence.getName() + "(var" + edgeVariance + ", lambda"
+          .setName(inSequence.getName() + "(var" + String.format("%.2f", edgeVariance) + ", lambda"
               + lambda + ", " + ((use8Connected)? "8": "4") + "-conn)");
     }
     return resultSegmentation;
@@ -482,7 +482,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
   public Sequence getSegmentationSequenceWithROIs() {
     Sequence result = SequenceUtil.getCopy(treatedSequence);
     result.addROIs((Collection<ROI>) resultROIs, false);
-    result.setName(inSequence.getName() + "Segmentation(var" + edgeVariance
+    result.setName(inSequence.getName() + "Segmentation(var" + String.format("%.2f", edgeVariance)
         + ", lambda" + lambda + ", " + ((use8Connected)? "8": "4") + "-conn)");
     return result;
   }
