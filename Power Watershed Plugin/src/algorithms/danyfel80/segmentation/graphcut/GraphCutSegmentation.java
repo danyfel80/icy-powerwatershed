@@ -70,8 +70,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     if (inSequence.getDataType_() == DataType.UBYTE) {
       treatedSequence = inSequence;
     } else {
-      treatedSequence =
-          SequenceUtil.convertToType(inSequence, DataType.UBYTE, true);
+      treatedSequence = SequenceUtil.convertToType(inSequence, DataType.UBYTE,
+          true);
     }
     treatedSequence.setName(inSequence.getName());
     graySequence = SequenceUtil.toGray(inSequence);
@@ -91,15 +91,16 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
   @Override
   protected void prepareGraph(List<ROI> seeds) throws BadHistogramParameters {
 
-    int x, y, z, c, dx, dy, dz, currPos, neighPos, neighPos1, i, numNeigh;
+    int x, y, z, xn, yn, zn, c, dx, dy, dz, zsxy, ysx, znsxy, ynsx, currPos,
+        neighPos, neighPos1, i, numNeigh;
     int[] currVals = new int[sc], neighVals = new int[sc],
         neighVals1 = new int[sc];
     float probaSrc, probaSnk;
 
     if (createProbas) {
       gradientSequence = new Sequence(inSequence.getName() + "Gradient");
-      terminalSequence =
-          new Sequence(inSequence.getName() + "TerminalProbabilities");
+      terminalSequence = new Sequence(
+          inSequence.getName() + "TerminalProbabilities");
     }
     // 1. Graph Instantiation
     int sxy = sx * sy;
@@ -118,30 +119,36 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     // - For each pixel
     for (z = 0; z < sz; z++) {
       float[] gradientData = null;
+      zsxy = z * sxy;
       if (createProbas) {
         gradientSequence.setImage(0, z,
             new IcyBufferedImage(sx, sy, 1, DataType.FLOAT));
         gradientData = gradientSequence.getDataXYAsFloat(0, z, 0);
       }
       for (y = 0; y < sy; y++) {
+        ysx = y * sx;
         for (x = 0; x < sx; x++) {
-          currPos = z * sxy + y * sx + x;
+          currPos = zsxy + ysx + x;
           for (c = 0; c < sc; c++) {
-            currVals[c] = TypeUtil.unsign(seqData[z][c][y * sx + x]);
+            currVals[c] = TypeUtil.unsign(seqData[z][c][ysx + x]);
           }
           diffN = 0;
           numNeigh = 0;
           // - Take neighbors
           for (dx = 0; dx < 2 && dx + x < sx; dx++) {
+            xn = dx + x;
             for (dy = 0; dy < 2 && dy + y < sy; dy++) {
+              yn = dy + y;
+              ynsx = yn * sx;
               for (dz = 0; dz < 2 && dz + z < sz; dz++) {
+                zn = dz + z;
+                znsxy = zn * sxy;
                 if (dx + dy + dz > 0) {
-                  if (use8Connected || dx + dy == 0 || dx + dz == 0
-                      || dy + dz == 0) {
-                    neighPos = (z + dz) * sxy + (y + dy) * sx + (x + dx);
+                  if (use8Connected || dx + dy + dz == 1) {
+                    neighPos = znsxy + ynsx + xn;
+
                     for (c = 0; c < sc; c++) {
-                      neighVals[c] = TypeUtil
-                          .unsign(seqData[z + dz][c][(y + dy) * sx + (x + dx)]);
+                      neighVals[c] = TypeUtil.unsign(seqData[zn][c][ynsx + xn]);
                     }
 
                     weight = (float) getEdgeLikelihood(currVals, neighVals, dx,
@@ -151,17 +158,16 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                     diffN += weight;
                     numNeigh++;
                     if (createProbas)
-                      gradientData[y * sx + x] += weight;
+                      gradientData[ysx + x] += weight;
                   }
                   if (use8Connected) {
                     if (dz == 0 && dx + dy == 2) {
-                      neighPos = z * sxy + y * sx + (x + dx);
-                      neighPos1 = z * sxy + (y + dy) * sx + x;
+                      neighPos = zsxy + ysx + xn;
+                      neighPos1 = zsxy + ynsx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] =
-                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
+                        neighVals[c] = TypeUtil.unsign(seqData[z][c][ysx + xn]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[z][c][ynsx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -170,16 +176,15 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
                     }
                     if (dy == 0 && dx + dz == 2) {
-                      neighPos = z * sxy + y * sx + (x + dx);
-                      neighPos1 = (z + dz) * sxy + y * sx + x;
+                      neighPos = zsxy + ysx + xn;
+                      neighPos1 = znsxy + ysx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] =
-                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
+                        neighVals[c] = TypeUtil.unsign(seqData[z][c][ysx + xn]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[zn][c][ysx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -188,16 +193,15 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
                     }
                     if (dx == 0 && dy + dz == 2) {
-                      neighPos = z * sxy + (y + dy) * sx + x;
-                      neighPos1 = (z + dz) * sxy + y * sx + x;
+                      neighPos = zsxy + ynsx + x;
+                      neighPos1 = znsxy + ysx + x;
                       for (c = 0; c < sc; c++) {
-                        neighVals[c] =
-                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
+                        neighVals[c] = TypeUtil.unsign(seqData[z][c][ynsx + x]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[zn][c][ysx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -206,18 +210,18 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
                     }
 
                     if (dx + dy + dz == 3) {
                       // xy z
-                      neighPos = z * sxy + (y + dy) * sx + (x + dx);
-                      neighPos1 = (z + dz) * sxy + y * sx + x;
+                      neighPos = zsxy + ynsx + xn;
+                      neighPos1 = znsxy + ysx + x;
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
-                            .unsign(seqData[z][c][(y + dy) * sx + (x + dx)]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z + dz][c][y * sx + x]);
+                            .unsign(seqData[z][c][ynsx + xn]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[zn][c][ysx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -226,16 +230,16 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
 
                       // xz y
-                      neighPos = (z + dz) * sxy + y * sx + (x + dx);
-                      neighPos1 = z * sxy + (y + dy) * sx + x;
+                      neighPos = znsxy + ysx + xn;
+                      neighPos1 = zsxy + ynsx + x;
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
-                            .unsign(seqData[z + dx][c][y * sx + (x + dx)]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z][c][(y + dy) * sx + x]);
+                            .unsign(seqData[zn][c][ysx + xn]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[z][c][ynsx + x]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -244,16 +248,16 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
 
                       // yz x
-                      neighPos = (z + dz) * sxy + (y + dy) * sx + x;
-                      neighPos1 = z * sxy + y * sx + (x + dx);
+                      neighPos = znsxy + ynsx + x;
+                      neighPos1 = zsxy + ysx + xn;
                       for (c = 0; c < sc; c++) {
                         neighVals[c] = TypeUtil
-                            .unsign(seqData[z + dz][c][(y + dy) * sx + x]);
-                        neighVals1[c] =
-                            TypeUtil.unsign(seqData[z][c][y * sx + (x + dx)]);
+                            .unsign(seqData[zn][c][ynsx + x]);
+                        neighVals1[c] = TypeUtil
+                            .unsign(seqData[z][c][ysx + xn]);
                       }
                       weight = (float) getEdgeLikelihood(neighVals, neighVals1,
                           dx, dy, dz);
@@ -262,7 +266,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
                       diffN += weight;
                       numNeigh++;
                       if (createProbas)
-                        gradientData[y * sx + x] += weight;
+                        gradientData[ysx + x] += weight;
                     }
                   }
                 }
@@ -272,7 +276,7 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
           if (diffN + 1 > maxDiff)
             maxDiff = diffN + 1;
           if (createProbas)
-            gradientData[y * sx + x] /= (float) numNeigh;
+            gradientData[ysx + x] /= (float) numNeigh;
         }
       }
     }
@@ -295,22 +299,23 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
         terminalData = terminalSequence.getDataXYAsFloat(0, z, 0);
       }
       for (y = 0; y < sy; y++) {
+        ysx = y * sx;
         for (x = 0; x < sx; x++) {
-          currPos = z * sxy + y * sx + x;
+          currPos = z * sxy + ysx + x;
 
           probaSrc = new Double(
-              -Math.log(getProba(0, TypeUtil.unsign(grayData[z][y * sx + x]))))
+              -Math.log(getProba(0, TypeUtil.unsign(grayData[z][ysx + x]))))
                   .floatValue();
           // System.out.print("proba (" + probaSrc);
           probaSnk = new Double(
-              -Math.log(getProba(1, TypeUtil.unsign(grayData[z][y * sx + x]))))
+              -Math.log(getProba(1, TypeUtil.unsign(grayData[z][ysx + x]))))
                   .floatValue();
           // System.out.println(", " + probaSnk+")");
           val = graphCut.setTerminalWeights(currPos, probaSrc, probaSnk, lambda,
               false);
           maxVal = Math.max(maxVal, Math.abs(val));
           if (createProbas)
-            terminalData[y * sx + x] = val;
+            terminalData[ysx + x] = val;
         }
       }
     }
@@ -323,13 +328,12 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
     for (i = 0; i < 2; i++) {
       sDI = new SequenceDataIterator(treatedSequence, seeds.get(i));
       while (!sDI.done()) {
-        currPos = sDI.getPositionZ() * sxy + sDI.getPositionY() * sx
-            + sDI.getPositionX();
+        ysx = sDI.getPositionY() * sx;
+        currPos = sDI.getPositionZ() * sxy + ysx + sDI.getPositionX();
         val = graphCut.setTerminalWeights(currPos, (float) (i), (float) (1 - i),
             maxVal, false);
         if (createProbas)
-          terminalData[sDI.getPositionZ()][sDI.getPositionY() * sx
-              + sDI.getPositionX()] = val;
+          terminalData[sDI.getPositionZ()][ysx + sDI.getPositionX()] = val;
         sDI.next();
       }
     }
@@ -406,8 +410,8 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
     seedHistograms = new Histogram[seeds.size()];
     for (i = 0; i < seeds.size(); i++) {
-      seedHistograms[i] =
-          Histogram.compute(graySequence, seeds.get(i), true, 256, 0, 255);
+      seedHistograms[i] = Histogram.compute(graySequence, seeds.get(i), true,
+          256, 0, 255);
     }
     return seedHistograms;
   }
@@ -451,12 +455,12 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
               new IcyBufferedImage(sx, sy, 1, DataType.UBYTE));
 
         // set value from ROI(s)
-        byte val = (int)0;
-        for (ROI roi: resultROIs) {
+        byte val = (int) 0;
+        for (ROI roi : resultROIs) {
           if (!roi.getBounds5D().isEmpty())
             DataIteratorUtil
                 .set(new SequenceDataIterator(resultSegmentation, roi), val);
-          val = (byte)DataType.UBYTE_MAX_VALUE;
+          val = (byte) DataType.UBYTE_MAX_VALUE;
         }
 
         // notify data changed
@@ -465,9 +469,9 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
       finally {
         resultSegmentation.endUpdate();
       }
-      resultSegmentation
-          .setName(inSequence.getName() + "(var" + String.format("%.2f", edgeVariance) + ", lambda"
-              + lambda + ", " + ((use8Connected)? "8": "4") + "-conn)");
+      resultSegmentation.setName(inSequence.getName() + "(var"
+          + String.format("%.2f", edgeVariance) + ", lambda" + lambda + ", "
+          + ((use8Connected)? "8": "4") + "-conn)");
     }
     return resultSegmentation;
   }
@@ -482,8 +486,9 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
   public Sequence getSegmentationSequenceWithROIs() {
     Sequence result = SequenceUtil.getCopy(treatedSequence);
     result.addROIs((Collection<ROI>) resultROIs, false);
-    result.setName(inSequence.getName() + "Segmentation(var" + String.format("%.2f", edgeVariance)
-        + ", lambda" + lambda + ", " + ((use8Connected)? "8": "4") + "-conn)");
+    result.setName(inSequence.getName() + "Segmentation(var"
+        + String.format("%.2f", edgeVariance) + ", lambda" + lambda + ", "
+        + ((use8Connected)? "8": "4") + "-conn)");
     return result;
   }
 
