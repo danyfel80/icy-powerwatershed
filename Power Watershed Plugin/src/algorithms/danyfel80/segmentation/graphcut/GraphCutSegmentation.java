@@ -13,7 +13,6 @@ import icy.roi.ROI;
 import icy.sequence.Sequence;
 import icy.sequence.SequenceDataIterator;
 import icy.sequence.SequenceUtil;
-import icy.type.DataIteratorUtil;
 import icy.type.DataType;
 import icy.type.TypeUtil;
 import plugins.kernel.roi.roi3d.ROI3DArea;
@@ -418,66 +417,76 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
 
   @Override
   public void executeSegmentation() {
-    int x, y, z, r;
-    int sxy = sx * sy;
-
     double maxFlow = graphCut.computeMaximumFlow(false, null);
     System.out.printf("Max flow = %f%n", maxFlow);
-
-    List<ROI3DArea> resROI = new ArrayList<ROI3DArea>();
-    for (r = 0; r < 2; r++) {
-      resROI.add(new ROI3DArea());
-    }
-
-    for (z = 0; z < sz; z++) {
-
-      for (y = 0; y < sy; y++) {
-        for (x = 0; x < sx; x++) {
-          resROI.get((graphCut
-              .getTerminal(z * sxy + y * sx + x) == Terminal.BACKGROUND)? 0: 1)
-              .addPoint(x, y, z);
-        }
-      }
-    }
-    resROI.get(0).setColor(seeds.get(0).getColor());
-    resROI.get(1).setColor(seeds.get(1).getColor());
-    this.resultROIs = resROI;
   }
 
   @Override
   public Sequence getSegmentationSequence() {
     if (resultSegmentation == null) {
+      int x, y, z, sxy = sx * sy;
       resultSegmentation = new Sequence();
       resultSegmentation.beginUpdate();
       try {
-        for (int z = 0; z < sz; z++)
-          resultSegmentation.setImage(0, z,
-              new IcyBufferedImage(sx, sy, 1, DataType.UBYTE));
-
-        // set value from ROI(s)
-        byte val = (int) 0;
-        for (ROI roi : resultROIs) {
-          if (!roi.getBounds5D().isEmpty())
-            DataIteratorUtil
-                .set(new SequenceDataIterator(resultSegmentation, roi), val);
-          val = (byte) DataType.UBYTE_MAX_VALUE;
+        for (z = 0; z < sz; z++) {
+          IcyBufferedImage slice = new IcyBufferedImage(sx, sy, 1,
+              DataType.UBYTE);
+          byte[] sliceData = slice.getDataXYAsByte(0);
+          for (y = 0; y < sy; y++) {
+            for (x = 0; x < sx; x++) {
+              sliceData[y * sx + x] = (graphCut
+                  .getTerminal(z * sxy + y * sx + x) == Terminal.BACKGROUND)? 0
+                      : (byte) DataType.UBYTE_MAX_VALUE;
+            }
+          }
+          slice.dataChanged();
+          resultSegmentation.setImage(0, z, slice);
         }
 
-        // notify data changed
-        resultSegmentation.dataChanged();
+        /*
+         * // set value from ROI(s) byte val = (int) 0; for (ROI roi :
+         * resultROIs) { if (!roi.getBounds5D().isEmpty()) DataIteratorUtil
+         * .set(new SequenceDataIterator(resultSegmentation, roi), val); val =
+         * (byte) DataType.UBYTE_MAX_VALUE; }
+         * 
+         * // notify data changed resultSegmentation.dataChanged();
+         */
       }
       finally {
         resultSegmentation.endUpdate();
       }
-      resultSegmentation.setName(inSequence.getName() + "(var"
+      resultSegmentation.setName(inSequence.getName() + "_GraphCut(var"
           + String.format("%.2f", edgeVariance) + ", lambda" + lambda + ", "
           + ((use8Connected)? "8": "4") + "-conn)");
     }
     return resultSegmentation;
   }
 
+  // TODO change to use segmentation sequence instead of graphcut to create ROIs
   @Override
   public Collection<? extends ROI> getSegmentationROIs() {
+    if (this.resultROIs == null) {
+      int r, z, y, x, sxy = sx * sy;
+
+      List<ROI3DArea> resROI = new ArrayList<ROI3DArea>();
+      for (r = 0; r < 2; r++) {
+        resROI.add(new ROI3DArea());
+      }
+
+      for (z = 0; z < sz; z++) {
+        for (y = 0; y < sy; y++) {
+          for (x = 0; x < sx; x++) {
+            resROI.get((graphCut
+                .getTerminal(z * sxy + y * sx + x) == Terminal.BACKGROUND)? 0
+                    : 1)
+                .addPoint(x, y, z);
+          }
+        }
+      }
+      resROI.get(0).setColor(seeds.get(0).getColor());
+      resROI.get(1).setColor(seeds.get(1).getColor());
+      this.resultROIs = resROI;
+    }
     return resultROIs;
   }
 
@@ -485,8 +494,11 @@ public class GraphCutSegmentation extends SegmentationAlgorithm {
   @Override
   public Sequence getSegmentationSequenceWithROIs() {
     Sequence result = SequenceUtil.getCopy(treatedSequence);
+    if (resultROIs == null) {
+      getSegmentationROIs();
+    }
     result.addROIs((Collection<ROI>) resultROIs, false);
-    result.setName(inSequence.getName() + "Segmentation(var"
+    result.setName(inSequence.getName() + "_GraphCut(var"
         + String.format("%.2f", edgeVariance) + ", lambda" + lambda + ", "
         + ((use8Connected)? "8": "4") + "-conn)");
     return result;

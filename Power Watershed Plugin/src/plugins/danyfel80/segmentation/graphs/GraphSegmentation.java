@@ -261,9 +261,9 @@ public class GraphSegmentation extends EzPlug {
         .format("Power Watershed Plugin is working fine and using %s!", algo));
 
     // Show results
-    Sequence result = algo.getSegmentationSequenceWithROIs();
+    //Sequence result = algo.getSegmentationSequenceWithROIs();
     addSequence(algo.getSegmentationSequence());
-    addSequence(result);
+    //addSequence(result);
     System.gc();
   }
 
