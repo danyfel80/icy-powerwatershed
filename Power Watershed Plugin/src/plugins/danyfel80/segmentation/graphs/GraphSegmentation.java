@@ -35,6 +35,7 @@ public class GraphSegmentation extends EzPlug {
   private EzVarSequence               inSeedsSequence;
   private Sequence                    inSeeds;
   private EzVarEnum<SegmentationType> inSegmentationType;
+  private EzVarBoolean								inShowROI;
 
   // Specific input
   // - Graphcuts
@@ -74,7 +75,9 @@ public class GraphSegmentation extends EzPlug {
 
     inSegmentationType =
         new EzVarEnum<>("Segmentation Type", SegmentationType.values());
-
+    
+    inShowROI = new EzVarBoolean("Show ROIs", true);
+    
     // specific params
     @SuppressWarnings("rawtypes")
     final List<EzVar> optional = new ArrayList<>();
@@ -161,6 +164,7 @@ public class GraphSegmentation extends EzPlug {
     addEzComponent(inShowProbas);
     addEzComponent(inUseGrayLevels);
     addEzComponent(inUseGeodesicReconstruction);
+    addEzComponent(inShowROI);
 
     inSegmentationType.setValue(SegmentationType.PowerWatershedQ2);
   }
@@ -256,13 +260,15 @@ public class GraphSegmentation extends EzPlug {
     endTime = System.nanoTime();
     System.out.println(
         "Time to run algorithm: " + (endTime - startTime) / 1000000 + "ms");
-
     MessageDialog.showDialog(String
         .format("Power Watershed Plugin is working fine and using %s!", algo));
 
     // Show results
     //Sequence result = algo.getSegmentationSequenceWithROIs();
     addSequence(algo.getSegmentationSequence());
+    if (inShowROI.getValue()) {
+    	addSequence(algo.getSegmentationSequenceWithROIs());
+    }
     //addSequence(result);
     System.gc();
   }
